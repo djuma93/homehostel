@@ -112,6 +112,12 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--blue)}
 .gate h2{margin-bottom:8px}
 .gate .btn{width:100%;margin-top:12px}
 .bonus{background:var(--blue-t);color:#1f3f86;border-radius:14px;padding:10px 14px;font-size:14px;margin:-6px 0 16px}
+.bonus.warn{background:var(--sun-t);color:#6b4a00}
+.more{margin-top:14px;background:var(--card);border-radius:14px;padding:4px 14px 10px}
+.more summary{cursor:pointer;font-weight:600;font-size:14.5px;padding:10px 0;color:var(--blue)}
+.more .sec{margin-top:12px}
+.more input,.more select{background:var(--paper)}
+.row .amt a{color:var(--muted);font-size:12.5px}
 .bonus.got{background:var(--green-t);color:#1d5a36}
 .stamp{font-size:12px;color:var(--muted);text-align:center;margin:18px 0 0}
 @media (min-width:600px){.beds{grid-template-columns:repeat(8,1fr)}.kpis{grid-template-columns:repeat(4,1fr)}}
@@ -145,7 +151,7 @@ var API='https://script.google.com/macros/s/AKfycby0zVTmjiOZCZiAXw8N7JB3kJVojajf
 var H=3600000, D=24*H, LS_API='hh1-uchet-api', LS_CODE='hh1-uchet-code';
 var WD=['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
 var MON=['январь','февраль','март','апрель','май','июнь','июль','август','сентябрь','октябрь','ноябрь','декабрь'];
-var KIND_STAY='Проживание';
+var KIND_STAY='Проживание',KIND_REFUND='Возврат';
 
 /* ===== состояние ===== */
 var S=null, C=null, code='', tab='beds', ownerMonth=null, guestFilter='in', busy=false, loadedAt=0, toastT=0;
@@ -209,7 +215,7 @@ function dayStart(ts){var d=new Date(ts);d.setHours(0,0,0,0);return d.getTime()}
 function inRange(ts,a,b){return ts>=a&&ts<b}
 function sumPays(a,b,f){var s=0;S.pays.forEach(function(p){if(inRange(p.ts,a,b)&&(!f||f(p)))s+=p.amount});return s}
 function sumExp(a,b,f){var s=0;S.exp.forEach(function(e){if(inRange(e.ts,a,b)&&(!f||f(e)))s+=e.amount});return s}
-function salCost(a,b){var s=0;S.shifts.forEach(function(h){if(inRange(h.ts,a,b))s+=(h.accrued||h.salary||0)});return s}
+function salCost(a,b){var s=0;S.shifts.forEach(function(h){if(h.ts&&inRange(h.ts,a,b))s+=(h.accrued||h.salary||0)});return s}
 function plural(n,a,b,c){var m=n%100,k=n%10;return m>10&&m<20?c:k===1?a:k>=2&&k<=4?b:c}
 function sumShift(a,b,k){var s=0;S.shifts.forEach(function(h){if(inRange(h.ts,a,b))s+=(h[k]||0)});return s}
 function isCash(p){return p.method===cashName()}
@@ -253,8 +259,37 @@ function render(keep){
   $('view').innerHTML=h+'<p class="stamp">Данные на '+dt(loadedAt)+' · <a href="#" data-act="refresh">обновить</a></p>';
   window.scrollTo(0,keep?y:0);
 }
+function stayRow(st){
+  var d=debtOf(st);
+  return '<button class="row" type="button" data-act="stay" data-id="'+st.id+'"><div><b>№'+st.no+' · '+esc(st.name)+'</b><span>'+bedLabel(st.bed)+' · '+esc(tariff(st.tariff).name)+(st.qty>1?' ×'+st.qty:'')+'</span><span>'+dt(st.tin)+' → '+dt(st.tout)+'</span></div><div class="amt">'+money(st.sum+(st.extra||0))+(d>0?'<span class="neg">долг '+money(d)+'</span>':'<span class="pos">оплачено</span>')+'</div></button>';
+}
+function vGuests(){
+  var list=S.stays.filter(function(s){return guestFilter==='in'?s.status==='in':guestFilter==='debt'?debtOf(s)>0:s.status==='out'}).sort(function(a,b){return b.tin-a.tin}).slice(0,60);
+  var h='<h2>Гости</h2><div class="seg" style="margin-top:12px">'+[['in','Живут сейчас'],['debt','С долгом'],['out','Выехали']].map(function(x){return '<button type="button" data-act="gf" data-v="'+x[0]+'" class="'+(guestFilter===x[0]?'on':'')+'">'+x[1]+'</button>'}).join('')+'</div>';
+  h+=list.length?'<div class="list">'+list.map(stayRow).join('')+'</div>':'<div class="empty">Здесь пока пусто.</div>';
+  if(guestFilter==='out')h+='<p class="hint">'+(isOwner()?'Показаны последние 60 записей. Вся история лежит в Google Таблице.':'Показаны выехавшие за последние 3 дня.')+'</p>';
+  return h;
+}
+function bars(rows,cls,fmt){
+  var max=0;rows.forEach(function(r){if(r[1]>max)max=r[1]});
+  return '<div class="bars">'+rows.map(function(r){return '<div class="bar '+(cls||'')+'"><span>'+esc(r[0])+'</span><i style="width:'+(max?Math.max(1,Math.round(r[1]/max*100)):0)+'%"></i><b>'+(fmt?fmt(r[1]):r[1])+'</b></div>'}).join('')+'</div>';
+}
+function v3(){return !!S&&S.v>=3}
+function myShift(){return S.shift&&S.shift.admin===S.user.name?S.shift:null}
+function canWork(){return !v3()||isOwner()||!!myShift()}
+function occNow(){var n=0;S.stays.forEach(function(s){if(s.status==='in')n++});return n}
+function insSince(t){var n=0,m=Math.floor(t/60000)*60000;S.stays.forEach(function(s){if(s.tin>=m)n++});return n}
+function hoursStr(ms){ms=Math.max(0,ms);return Math.floor(ms/H)+' ч '+p2(Math.floor(ms%H/60000))+' мин'}
+function freeBeds(){var a=[];C.rooms.forEach(function(R){for(var i=1;i<=R.beds;i++){var id=R.n+'-'+i;if(!activeAt(id))a.push(id)}});return a}
+function unitOf(st){return st.unit||tariff(st.tariff).price}
+function shiftBox(){
+  if(!v3()||isOwner())return '';
+  if(!S.shift)return '<div class="bonus warn">Смена не принята. Пересчитайте кассу и примите смену. После этого можно заселять и принимать оплату.<div class="btns" style="margin:10px 0 0"><button class="btn sm" type="button" data-act="open">Принять смену</button></div></div>';
+  if(!myShift())return '<div class="bonus warn">Сейчас открыта смена: '+esc(S.shift.admin)+'. Закрыть её может '+esc(S.shift.admin)+' под своим кодом или владелец. После этого вы примете свою.</div>';
+  return '';
+}
 function vBeds(){
-  var now=Date.now(),occ=0,debts=0,h='',T=total();
+  var now=Date.now(),occ=0,debts=0,h=shiftBox(),T=total();
   if(C.memo)h+='<div class="memo"><b>Памятка от владельца</b>'+esc(C.memo)+'</div>';
   var rooms='';
   C.rooms.forEach(function(R){
@@ -275,46 +310,45 @@ function vBeds(){
      '<div class="kpi"><span>Приход сегодня</span><b>'+money(sumPays(t0,t0+D))+'</b><small>наличными '+money(sumPays(t0,t0+D,isCash))+'</small></div>'+
      '<div class="kpi'+(debts?' bad':'')+'"><span>Долги гостей</span><b>'+money(debts)+'</b></div>'+
      '<div class="kpi"><span>Наличных в кассе</span><b>'+money(S.cash)+'</b><small>по расчёту</small></div></div>';
-  if(C.bonus&&C.bonusFrom){var need=C.bonusFrom-occ;h+='<div class="bonus'+(need<=0?' got':'')+'">'+(need<=0?'Занято '+occ+'. Бонус за смену '+money(C.bonus)+' будет начислен, если при закрытии смены останется не меньше '+C.bonusFrom+'.':'До бонуса '+money(C.bonus)+' не хватает '+need+' '+plural(need,'места','мест','мест')+': нужно '+C.bonusFrom+' занятых на момент закрытия смены.')+'</div>'}
+  if(v3()&&S.shift&&C.bonus&&C.bonusFrom){
+    var ins=insSince(S.shift.start),best=Math.max(occ,ins),need=C.bonusFrom-best;
+    h+='<div class="bonus'+(need<=0?' got':'')+'">Смена: '+esc(S.shift.admin)+', идёт '+hoursStr(now-S.shift.start)+'. Занято '+occ+', заселено за смену '+ins+'. '+(need<=0?'Набралось '+C.bonusFrom+'. После закрытия смены владелец решит о премии '+money(C.bonus)+'.':'До премии '+money(C.bonus)+' не хватает '+need+': нужно '+C.bonusFrom+' человек.')+'</div>';
+  }
   h+='<div class="legend"><span><i style="border:1.5px dashed #cdbf9f"></i>свободно</span><span><i style="background:var(--green-t)"></i>занято</span><span><i style="background:var(--sun-t)"></i>выезд до 6 часов</span><span><i style="background:var(--tomato-t)"></i>время вышло</span><span><i style="box-shadow:inset 0 0 0 2px var(--tomato)"></i>есть долг</span></div>';
-  return h+rooms+'<p class="hint">Нажмите на свободное место, чтобы заселить гостя. Нажмите на занятое, чтобы принять оплату, продлить или выселить.</p>';
-}
-function stayRow(st){
-  var d=debtOf(st);
-  return '<button class="row" type="button" data-act="stay" data-id="'+st.id+'"><div><b>№'+st.no+' · '+esc(st.name)+'</b><span>'+bedLabel(st.bed)+' · '+esc(tariff(st.tariff).name)+(st.qty>1?' ×'+st.qty:'')+'</span><span>'+dt(st.tin)+' → '+dt(st.tout)+'</span></div><div class="amt">'+money(st.sum+(st.extra||0))+(d>0?'<span class="neg">долг '+money(d)+'</span>':'<span class="pos">оплачено</span>')+'</div></button>';
-}
-function vGuests(){
-  var list=S.stays.filter(function(s){return guestFilter==='in'?s.status==='in':guestFilter==='debt'?debtOf(s)>0:s.status==='out'}).sort(function(a,b){return b.tin-a.tin}).slice(0,60);
-  var h='<h2>Гости</h2><div class="seg" style="margin-top:12px">'+[['in','Живут сейчас'],['debt','С долгом'],['out','Выехали']].map(function(x){return '<button type="button" data-act="gf" data-v="'+x[0]+'" class="'+(guestFilter===x[0]?'on':'')+'">'+x[1]+'</button>'}).join('')+'</div>';
-  h+=list.length?'<div class="list">'+list.map(stayRow).join('')+'</div>':'<div class="empty">Здесь пока пусто.</div>';
-  if(guestFilter==='out')h+='<p class="hint">'+(isOwner()?'Показаны последние 60 записей. Вся история лежит в Google Таблице.':'Показаны выехавшие за последние 3 дня.')+'</p>';
-  return h;
+  return h+rooms+'<p class="hint">Нажмите на свободное место, чтобы заселить гостя. Нажмите на занятое, чтобы принять оплату, продлить, переселить или выселить.</p>';
 }
 function vCash(){
-  var now=Date.now(),t0=dayStart(now),t1=t0+D;
+  var now=Date.now(),t0=dayStart(now),t1=t0+D,ms=v3()&&S.shift?(isOwner()?S.shift:myShift()):null;
   var cashIn=sumPays(t0,t1,isCash),all=sumPays(t0,t1),ex=sumExp(t0,t1);
-  var h='<h2>Касса за сегодня</h2><div class="kpis"><div class="kpi"><span>Приход всего</span><b>'+money(all)+'</b><small>'+dOnly(now)+'</small></div><div class="kpi"><span>Наличными</span><b>'+money(cashIn)+'</b></div><div class="kpi"><span>Kaspi и переводы</span><b>'+money(all-cashIn)+'</b><small>уходят владельцу</small></div><div class="kpi"><span>Расходы</span><b>'+money(ex)+'</b></div></div>';
-  h+='<div class="pl"><div><span>Наличных в кассе по расчёту</span><b>'+money(S.cash)+'</b></div></div>';
-  h+='<div class="btns"><button class="btn" type="button" data-act="exp">Записать расход</button><button class="btn blue" type="button" data-act="shift">Закрыть смену</button></div>';
-  if(!isOwner()&&S.my)h+='<div class="sec"><h3>Моя зарплата за '+mName(S.my.month).split(' ')[0]+'</h3><span>'+S.my.shifts+' '+plural(S.my.shifts,'смена','смены','смен')+(S.my.bonus?', с бонусом '+S.my.bonus:'')+'</span></div><div class="pl"><div><span>Начислено</span><b>'+money(S.my.accrued)+'</b></div><div><span>Получил</span><b>'+money(S.my.got)+'</b></div><div><span>Осталось получить</span><b>'+money(S.my.accrued-S.my.got)+'</b></div></div>';
+  var h='<h2>Касса за сегодня</h2>'+(shiftBox()?'<div style="margin-top:12px">'+shiftBox()+'</div>':'')+'<div class="kpis"><div class="kpi"><span>Приход всего</span><b>'+money(all)+'</b><small>'+dOnly(now)+'</small></div><div class="kpi"><span>Наличными</span><b>'+money(cashIn)+'</b></div><div class="kpi"><span>Kaspi и переводы</span><b>'+money(all-cashIn)+'</b><small>уходят владельцу</small></div><div class="kpi"><span>Расходы</span><b>'+money(ex)+'</b></div></div>';
+  h+='<div class="pl flat">'+(ms?'<div><span>Смена: '+esc(ms.admin)+'</span><b>с '+dt(ms.start)+', '+hoursStr(now-ms.start)+'</b></div>':'')+'<div><span>Наличных в кассе по расчёту</span><b>'+money(S.cash)+'</b></div></div>';
+  var bt='';
+  if(canWork())bt+='<button class="btn" type="button" data-act="exp">Записать расход</button>';
+  if(!v3()||ms)bt+='<button class="btn blue" type="button" data-act="shift">Закрыть смену'+(ms&&isOwner()?': '+esc(ms.admin):'')+'</button>';
+  if(bt)h+='<div class="btns">'+bt+'</div>';
+  if(!isOwner()&&S.my)h+='<div class="sec"><h3>Моя зарплата за '+mName(S.my.month).split(' ')[0]+'</h3><span>'+S.my.shifts+' '+plural(S.my.shifts,'смена','смены','смен')+(S.my.hours?', '+Math.round(S.my.hours)+' ч':'')+'</span></div><div class="pl"><div><span>Начислено'+(S.my.bonus?', с премией за '+S.my.bonus+' '+plural(S.my.bonus,'смену','смены','смен'):'')+'</span><b>'+money(S.my.accrued)+'</b></div>'+(S.my.wait?'<div><span>Премия на рассмотрении у владельца</span><b>'+S.my.wait+' '+plural(S.my.wait,'смена','смены','смен')+'</b></div>':'')+'<div><span>Получил</span><b>'+money(S.my.got)+'</b></div><div><span>Осталось получить</span><b>'+money(S.my.accrued-S.my.got)+'</b></div></div>';
   var ops=[];
-  S.pays.forEach(function(p){if(inRange(p.ts,t0-D,t1)){var st=stayById(p.stay);ops.push({ts:p.ts,t:(p.kind===KIND_STAY?'Оплата':p.kind)+(st?' · '+st.name:''),s:p.method+(p.admin?' · '+p.admin:''),a:p.amount})}});
-  S.exp.forEach(function(e){if(inRange(e.ts,t0-D,t1))ops.push({ts:e.ts,t:'Расход · '+e.cat,s:'из: '+e.from+(e.note?' · '+e.note:''),a:-e.amount})});
-  S.shifts.forEach(function(x){if(inRange(x.ts,t0-D,t1)){if(x.salary)ops.push({ts:x.ts,t:'Зарплата · '+x.admin,s:'закрытие смены',a:-x.salary});if(x.handed)ops.push({ts:x.ts,t:'Сдано владельцу',s:x.admin,a:-x.handed})}});
+  S.pays.forEach(function(p){if(inRange(p.ts,t0-D,t1)){var st=stayById(p.stay);ops.push({ts:p.ts,t:(p.kind===KIND_STAY?'Оплата':p.kind)+(st?' · '+st.name:''),s:p.method+(p.admin?' · '+p.admin:'')+(p.note?' · '+p.note:''),a:p.amount})}});
+  S.exp.forEach(function(e){if(inRange(e.ts,t0-D,t1))ops.push({ts:e.ts,t:'Расход · '+e.cat,s:'из: '+e.from+(e.note?' · '+e.note:'')+(e.admin?' · '+e.admin:''),a:-e.amount,c:isOwner()&&v3()?e.id:''})});
+  S.shifts.forEach(function(x){if(x.ts&&inRange(x.ts,t0-D,t1)){if(x.salary)ops.push({ts:x.ts,t:'Зарплата · '+x.admin,s:'закрытие смены',a:-x.salary});if(x.handed)ops.push({ts:x.ts,t:'Сдано владельцу',s:x.admin,a:-x.handed})}});
   ops.sort(function(a,b){return b.ts-a.ts});
   h+='<div class="sec"><h3>Операции за сегодня и вчера</h3><span>'+ops.length+'</span></div>';
-  h+=ops.length?'<div class="list">'+ops.map(function(o){return '<div class="row" style="cursor:default"><div><b>'+esc(o.t)+'</b><span>'+dt(o.ts)+' · '+esc(o.s)+'</span></div><div class="amt '+(o.a<0?'neg':'pos')+'">'+(o.a>0?'+':'')+money(o.a)+'</div></div>'}).join('')+'</div>':'<div class="empty">Операций пока нет.</div>';
+  h+=ops.length?'<div class="list">'+ops.map(function(o){return '<div class="row" style="cursor:default"><div><b>'+esc(o.t)+'</b><span>'+dt(o.ts)+' · '+esc(o.s)+'</span></div><div class="amt '+(o.a<0?'neg':'pos')+'">'+(o.a>0?'+':'')+money(o.a)+(o.c?'<span><a href="#" data-act="cancel" data-kind="exp" data-id="'+o.c+'">отменить</a></span>':'')+'</div></div>'}).join('')+'</div>':'<div class="empty">Операций пока нет.</div>';
   return h;
 }
-function bars(rows,cls,fmt){
-  var max=0;rows.forEach(function(r){if(r[1]>max)max=r[1]});
-  return '<div class="bars">'+rows.map(function(r){return '<div class="bar '+(cls||'')+'"><span>'+esc(r[0])+'</span><i style="width:'+(max?Math.max(1,Math.round(r[1]/max*100)):0)+'%"></i><b>'+(fmt?fmt(r[1]):r[1])+'</b></div>'}).join('')+'</div>';
+function shiftRow(x){
+  var df=x.counted-x.expected;
+  return '<div class="row" style="cursor:default"><div><b>'+esc(x.admin)+'</b><span>'+(x.start?dt(x.start)+' → ':'')+dt(x.ts)+(x.hours?' · '+String(x.hours).replace('.',',')+' ч':'')+'</span>'+(x.rate?'<span>занято '+x.occ+(x.late?' (время вышло у '+x.late+')':'')+(x.start?', заселено '+x.checkins:'')+(x.bstate?' · премия: '+esc(x.bstate)+(x.bonus?' '+money(x.bonus):''):'')+'</span>':'')+'<span>взял '+money(x.salary)+' · сдано '+money(x.handed)+(x.openDiff?' · при приёме '+(x.openDiff<0?'недостача ':'излишек ')+money(Math.abs(x.openDiff)):'')+'</span></div><div class="amt '+(df<0?'neg':'pos')+'">'+(df===0?'сошлось':(df<0?'недостача ':'излишек ')+money(Math.abs(df)))+'</div></div>';
 }
 function vOwner(){
   var ms=months(); if(!ownerMonth||ms.indexOf(ownerMonth)<0)ownerMonth=ms[ms.length-1];
   var st=monthStats(ownerMonth),pi=ms.indexOf(ownerMonth),prev=pi>0?monthStats(ms[pi-1]):null,T=total();
   function delta(a,b){if(!prev||!b)return '';var x=a/st.days,y=b/prev.days,p=Math.round((x-y)/Math.abs(y)*100);return '<small>в день '+(p>=0?'+':'−')+Math.abs(p)+'% к прошлому месяцу</small>'}
-  var h='<h2>Кабинет владельца</h2><div class="seg" style="margin-top:12px">'+ms.map(function(k){return '<button type="button" data-act="om" data-v="'+k+'" class="'+(k===ownerMonth?'on':'')+'">'+mName(k)+'</button>'}).join('')+'</div>';
+  var h='<h2>Кабинет владельца</h2>';
+  if(S.user&&S.v===undefined)h+='<div class="bonus warn" style="margin-top:12px">Серверная часть в Google Таблице ещё старой версии. Приём смены, премии, скидки, возвраты и отмена записей заработают после её обновления.</div>';
+  var wait=S.shifts.filter(function(x){return x.bstate==='ждёт решения'}).sort(function(a,b){return b.ts-a.ts});
+  if(wait.length)h+='<div class="sec"><h3>Премии на решении</h3><span>набралось '+C.bonusFrom+' человек за смену</span></div><div class="list">'+wait.map(function(x){return '<button class="row" type="button" data-act="bonus" data-hid="'+x.id+'"><div><b>'+esc(x.admin)+' · '+dOnly(x.ts)+'</b><span>занято на закрытии '+x.occ+(x.late?' (время вышло у '+x.late+')':'')+', заселено за смену '+x.checkins+'</span></div><div class="amt">'+money(C.bonus)+'<span>решить</span></div></button>'}).join('')+'</div>';
+  h+='<div class="seg" style="margin-top:12px">'+ms.map(function(k){return '<button type="button" data-act="om" data-v="'+k+'" class="'+(k===ownerMonth?'on':'')+'">'+mName(k)+'</button>'}).join('')+'</div>';
   h+='<div class="kpis"><div class="kpi"><span>Выручка</span><b>'+money(st.rev)+'</b>'+delta(st.rev,prev&&prev.rev)+'</div><div class="kpi '+(st.net>=0?'good':'bad')+'"><span>Чистыми</span><b>'+money(st.net)+'</b>'+delta(st.net,prev&&prev.net)+'</div><div class="kpi"><span>Гостей заселено</span><b>'+st.guests+'</b>'+delta(st.guests,prev&&prev.guests)+'</div><div class="kpi"><span>Загрузка</span><b>'+Math.round(st.occ*100)+'%</b><small>в среднем '+(st.occ*T).toFixed(1).replace('.',',')+' из '+T+' мест</small></div></div>';
   h+='<div class="sec"><h3>Итог за '+mName(ownerMonth)+'</h3><span>'+st.days+' дн.</span></div><div class="pl"><div><span>Выручка, наличные</span><b>'+money(st.cash)+'</b></div><div><span>Выручка, Kaspi и переводы</span><b>'+money(st.noncash)+'</b></div><div><span>Расходы</span><b class="neg">'+money(-st.exp)+'</b></div><div><span>Зарплата админов, начислено</span><b class="neg">'+money(-st.sal)+'</b></div><div><span>Остаётся владельцу</span><b>'+money(st.net)+'</b></div></div>';
   if(ms.length>1)h+='<div class="sec"><h3>Сравнение месяцев: чистыми</h3><span>текущий месяц неполный</span></div>'+bars(ms.map(function(k){return [mName(k).split(' ')[0],Math.max(0,monthStats(k).net)]}),'g',money);
@@ -324,17 +358,115 @@ function vOwner(){
   h+='<div class="sec"><h3>Расходы по статьям</h3></div>'+(cats.length?bars(cats,'t',money):'<div class="empty">Расходов нет.</div>');
   var src=Object.keys(st.src).map(function(k){return [k,st.src[k]]}).sort(function(a,b){return b[1]-a[1]});
   h+='<div class="sec"><h3>Откуда пришли гости</h3></div>'+(src.length?bars(src,'g'):'<div class="empty">Заселений нет.</div>');
-  var zp={},zn=[];function zc(n){if(!zp[n]){zp[n]={s:0,b:0,a:0,t:0,p:0};zn.push(n)}return zp[n]}
-  (C.admins||[]).forEach(zc);
-  S.shifts.forEach(function(x){if(inRange(x.ts,st.a,st.b)){var c=zc(x.admin);c.s++;if(x.bonus)c.b++;c.a+=x.accrued||0;c.t+=x.salary||0}});
-  (S.payouts||[]).forEach(function(x){if(inRange(x.ts,st.a,st.b))zc(x.to).p+=x.amount});
-  if(C.rate!=null)h+='<div class="sec"><h3>Зарплата админов</h3><span>ставка '+money(C.rate)+', бонус '+money(C.bonus)+' от '+C.bonusFrom+' мест</span></div>'+(zn.length?'<div class="list">'+zn.map(function(n){var c=zp[n],left=c.a-c.t-c.p;return '<div class="row" style="cursor:default"><div><b>'+esc(n)+'</b><span>'+c.s+' '+plural(c.s,'смена','смены','смен')+', с бонусом '+c.b+' · начислено '+money(c.a)+'</span><span>взял из кассы '+money(c.t)+' · выплачено '+money(c.p)+'</span></div><div class="amt '+(left<0?'neg':'')+'">'+money(Math.abs(left))+'<span>'+(left<0?'перебрал':'к выплате')+'</span></div></div>'}).join('')+'</div>':'<div class="empty">Админов в листе «Доступ» нет.</div>')+'<div class="btns"><button class="btn sm blue" type="button" data-act="payout">Записать выплату зарплаты</button></div>';
-  var sh=S.shifts.filter(function(x){return inRange(x.ts,st.a,st.b)}).sort(function(a,b){return b.ts-a.ts}),bad=sh.filter(function(x){return x.counted!==x.expected});
-  h+='<div class="sec"><h3>Смены</h3><span>закрыто '+sh.length+', с расхождением '+bad.length+'</span></div>'+(sh.length?'<div class="list">'+sh.slice(0,10).map(function(x){var df=x.counted-x.expected;return '<div class="row" style="cursor:default"><div><b>'+esc(x.admin)+'</b><span>'+dt(x.ts)+(x.rate?' · занято '+x.occ+(x.late?' (время вышло у '+x.late+')':'')+(x.bonus?' · бонус':''):'')+'</span><span>взял '+money(x.salary)+' · сдано '+money(x.handed)+'</span></div><div class="amt '+(df<0?'neg':'pos')+'">'+(df===0?'сошлось':(df<0?'недостача ':'излишек ')+money(Math.abs(df)))+'</div></div>'}).join('')+'</div>':'<div class="empty">Смены в этом месяце не закрывали.</div>');
+  if(C.rate!=null){
+    var zp={},zn=[];function zc(n){if(!zp[n]){zp[n]={s:0,b:0,h:0,a:0,t:0,p:0};zn.push(n)}return zp[n]}
+    (C.admins||[]).forEach(zc);
+    S.shifts.forEach(function(x){if(inRange(x.ts,st.a,st.b)){var c=zc(x.admin);c.s++;if(x.bonus)c.b++;c.h+=x.hours||0;c.a+=x.accrued||0;c.t+=x.salary||0}});
+    (S.payouts||[]).forEach(function(x){if(inRange(x.ts,st.a,st.b))zc(x.to).p+=x.amount});
+    h+='<div class="sec"><h3>Зарплата админов</h3><span>ставка '+money(C.rate)+', премия '+money(C.bonus)+' от '+C.bonusFrom+' чел.</span></div>'+(zn.length?'<div class="list">'+zn.map(function(n){var c=zp[n],left=c.a-c.t-c.p;return '<div class="row" style="cursor:default"><div><b>'+esc(n)+'</b><span>'+c.s+' '+plural(c.s,'смена','смены','смен')+(c.h?', '+Math.round(c.h)+' ч':'')+', с премией '+c.b+' · начислено '+money(c.a)+'</span><span>взял из кассы '+money(c.t)+' · выплачено '+money(c.p)+'</span></div><div class="amt '+(left<0?'neg':'')+'">'+money(Math.abs(left))+'<span>'+(left<0?'перебрал':'к выплате')+'</span></div></div>'}).join('')+'</div>':'<div class="empty">Админов в листе «Доступ» нет.</div>')+'<div class="btns"><button class="btn sm blue" type="button" data-act="payout">Записать выплату</button><button class="btn sm ghost" type="button" data-act="cfg">Ставка и премия</button></div>';
+  }
+  var sh=S.shifts.filter(function(x){return inRange(x.ts,st.a,st.b)}).sort(function(a,b){return b.ts-a.ts}),bad=sh.filter(function(x){return x.counted!==x.expected||x.openDiff});
+  h+='<div class="sec"><h3>Смены</h3><span>закрыто '+sh.length+', с расхождением '+bad.length+'</span></div>'+(sh.length?'<div class="list">'+sh.slice(0,10).map(shiftRow).join('')+'</div>':'<div class="empty">Смены в этом месяце не закрывали.</div>');
+  var dr=[];
+  S.stays.forEach(function(s){if(s.disc&&inRange(s.tin,st.a,st.b))dr.push({ts:s.tin,id:s.id,t:(s.disc>0?'Скидка':'Наценка')+' · '+s.name,s:(s.note||'без причины')+' · '+(s.admin||''),a:-s.disc})});
+  S.pays.forEach(function(p){if(p.kind===KIND_REFUND&&inRange(p.ts,st.a,st.b)){var s=stayById(p.stay);dr.push({ts:p.ts,id:p.stay,t:'Возврат'+(s?' · '+s.name:''),s:(p.note||'')+' · '+p.method+' · '+(p.admin||''),a:p.amount})}});
+  dr.sort(function(a,b){return b.ts-a.ts});
+  if(v3())h+='<div class="sec"><h3>Скидки и возвраты</h3><span>'+money(dr.reduce(function(s,x){return s+x.a},0))+'</span></div>'+(dr.length?'<div class="list">'+dr.slice(0,20).map(function(o){return '<button class="row" type="button" data-act="stay" data-id="'+o.id+'"><div><b>'+esc(o.t)+'</b><span>'+dt(o.ts)+' · '+esc(o.s)+'</span></div><div class="amt neg">'+money(o.a)+'</div></button>'}).join('')+'</div>':'<div class="empty">В этом месяце скидок и возвратов не было.</div>');
   var deb=S.stays.filter(function(s){return debtOf(s)>0}).sort(function(a,b){return debtOf(b)-debtOf(a)});
   h+='<div class="sec"><h3>Должники</h3><span>'+money(deb.reduce(function(s,x){return s+debtOf(x)},0))+'</span></div>'+(deb.length?'<div class="list">'+deb.slice(0,12).map(stayRow).join('')+'</div>':'<div class="empty">Долгов нет.</div>');
   h+='<div class="sec"><h3>Памятка для админов</h3><span>видна на экране «Места»</span></div><textarea id="memoT" aria-label="Памятка для админов">'+esc(C.memo)+'</textarea><div class="btns"><button class="btn blue" type="button" data-act="memo">Сохранить памятку</button></div><div class="err" id="memoErr"></div>';
   return h;
+}
+function fCheckin(bed){
+  openSheet(head('Заселение')+'<p class="hint" style="margin:-4px 0 12px">'+bedLabel(bed)+' · номер заказа появится после сохранения</p><div class="grid">'+
+  '<div class="f w"><label for="cPhone">Телефон</label><input id="cPhone" type="tel" inputmode="tel" placeholder="+7" autocomplete="off"><div class="hint" id="cFound" style="margin:2px 0 0"></div></div>'+
+  '<div class="f w"><label for="cName">Имя гостя</label><input id="cName" autocomplete="off"></div>'+
+  '<div class="f w"><label for="cTar">Тариф</label><select id="cTar">'+C.tariffs.map(function(t){return '<option value="'+esc(t.k)+'">'+esc(t.name)+' · '+money(t.price)+'</option>'}).join('')+'</select></div>'+
+  '<div class="f"><label for="cQty">Количество</label><input id="cQty" type="number" min="1" max="60" value="1" inputmode="numeric"></div>'+
+  (v3()?'<div class="f"><label for="cUnit">Цена за период, ₸</label><input id="cUnit" type="number" min="0" inputmode="numeric"></div><div class="f w" id="cNoteF" style="display:none"><label for="cNote">Причина другой цены (видит владелец)</label><input id="cNote" autocomplete="off"></div>':'')+
+  '<div class="f'+(v3()?' w':'')+'"><label for="cIn">Заезд</label><input id="cIn" type="datetime-local" value="'+toLocalInput(Date.now())+'"></div>'+
+  '<div class="f"><label for="cPaid">Оплатил сейчас, ₸</label><input id="cPaid" type="number" min="0" inputmode="numeric"></div>'+
+  '<div class="f"><label for="cMet">Способ оплаты</label><select id="cMet">'+opts(C.methods)+'</select></div>'+
+  '<div class="f w"><label for="cSrc">Откуда узнал</label><select id="cSrc">'+opts(C.sources)+'</select></div></div>'+
+  '<div class="total"><span id="cInfo"></span><b id="cSum"></b></div><div class="err" id="cErr"></div>'+
+  '<div class="btns"><button class="btn" type="button" data-act="in-save" data-bed="'+bed+'" data-sid="'+uid('s')+'" data-pid="'+uid('p')+'">Заселить</button></div>');
+  if($('cUnit'))$('cUnit').value=tariff($('cTar').value).price;
+  calcIn(true);
+}
+function unitIn(){var T=tariff($('cTar').value);if(!$('cUnit')||$('cUnit').value==='')return T.price;return Math.max(0,parseInt($('cUnit').value,10)||0)}
+function calcIn(setPaid){
+  if(!$('cTar'))return;var T=tariff($('cTar').value),q=Math.max(1,parseInt($('cQty').value,10)||1),u=unitIn(),sum=u*q,t0=new Date($('cIn').value).getTime()||Date.now();
+  $('cSum').textContent=money(sum);$('cInfo').textContent='Выезд: '+dt(t0+T.h*H*q);
+  if($('cNoteF'))$('cNoteF').style.display=u!==T.price?'':'none';
+  if(setPaid)$('cPaid').value=sum;
+  var paid=parseInt($('cPaid').value,10)||0;$('cErr').textContent=(u!==T.price?(u<T.price?'Скидка ':'Наценка ')+money(Math.abs(T.price-u)*q)+'. ':'')+(paid<sum?'В долг останется '+money(sum-paid)+'.':'');
+}
+var findT=0,findKey='';
+function lookup(){
+  if(!v3()||!$('cPhone'))return;var k=$('cPhone').value.replace(/\D/g,'').slice(-10);
+  if(k.length<10){findKey='';$('cFound').textContent='';return}
+  if(k===findKey)return;findKey=k;clearTimeout(findT);
+  findT=setTimeout(function(){
+    fetch(apiUrl(),{method:'POST',body:JSON.stringify({code:code,find:k})}).then(function(r){return r.json()}).then(function(res){
+      if(!$('cFound')||findKey!==k||!res||!res.ok)return;var f=res.found;
+      if(!f){$('cFound').textContent='Новый гость: по этому номеру раньше не заселялся.';return}
+      if(!$('cName').value.trim())$('cName').value=f.name;
+      $('cFound').innerHTML='<b>'+esc(f.name)+'</b>: жил '+f.visits+' '+plural(f.visits,'раз','раза','раз')+', последний заезд '+dOnly(f.last)+'.'+(f.here?' Сейчас живёт: '+bedLabel(f.here)+'.':'')+(f.debt>0?' <span class="neg">Есть долг '+money(f.debt)+'.</span>':'');
+    }).catch(function(){});
+  },500);
+}
+function fStay(id){
+  var st=stayById(id);if(!st)return closeSheet();var d=debtOf(st),T=tariff(st.tariff),w=canWork();
+  var pays=S.pays.filter(function(p){return p.stay===id}).sort(function(a,b){return b.ts-a.ts});
+  var h=head('Заказ №'+st.no)+'<div class="pl flat"><div><span>Гость</span><b>'+esc(st.name)+'</b></div><div><span>Телефон</span><b>'+(st.phone?'<a href="tel:'+esc(st.phone.replace(/[^+\d]/g,''))+'">'+esc(st.phone)+'</a>':'не указан')+'</b></div><div><span>Место</span><b>'+bedLabel(st.bed)+'</b></div><div><span>Тариф</span><b>'+esc(T.name)+(st.qty>1?' ×'+st.qty:'')+'</b></div><div><span>Заезд</span><b>'+dt(st.tin)+'</b></div><div><span>Выезд</span><b>'+dt(st.tout)+'</b></div><div><span>Проживание</span><b>'+money(st.sum)+'</b></div>'+(st.disc?'<div><span>'+(st.disc>0?'Скидка':'Наценка')+(st.note?': '+esc(st.note):'')+'</span><b>'+money(Math.abs(st.disc))+'</b></div>':'')+'<div><span>Стирка и сушка</span><b>'+money(st.extra||0)+'</b></div><div><span>Оплачено</span><b>'+money(paidOf(st))+'</b></div><div><span>'+(d<0?'Переплата':'Долг')+'</span><b class="'+(d>0?'neg':'pos')+'">'+money(Math.abs(d))+'</b></div><div><span>Заселил</span><b>'+esc(st.admin||'')+'</b></div></div>';
+  if(st.status==='in'&&w){
+    h+='<div class="sec"><h3>Принять оплату или услугу</h3></div><div class="grid"><div class="f"><label for="pAmt">Сумма, ₸</label><input id="pAmt" type="number" min="0" inputmode="numeric" value="'+(d>0?d:'')+'"></div><div class="f"><label for="pMet">Способ</label><select id="pMet">'+opts(C.methods)+'</select></div></div>'+
+    '<div class="btns"><button class="btn sm" type="button" data-act="pay" data-id="'+id+'" data-pid="'+uid('p')+'">Принять оплату</button>'+C.services.map(function(s){return '<button class="btn sm ghost" type="button" data-act="svc" data-id="'+id+'" data-k="'+esc(s.name)+'" data-pid="'+uid('p')+'">'+esc(s.name)+' +'+s.price+'</button>'}).join('')+'</div>'+
+    (C.services.length?'<p class="hint" style="margin-top:-4px">Услуга записывается как оплаченная выбранным способом.</p>':'')+
+    '<div class="btns"><button class="btn sm blue" type="button" data-act="ext" data-id="'+id+'">Продлить на '+period(T.h)+' · '+money(unitOf(st))+'</button><button class="btn sm ghost" type="button" data-act="out" data-id="'+id+'">Выселить</button></div>';
+  }else if(st.status==='in')h+='<p class="hint">Чтобы принимать оплату и выселять, примите смену на экране «Касса».</p>';
+  h+='<div class="err" id="sErr"></div>';
+  if(v3()&&w){
+    var fb=freeBeds();
+    h+='<details class="more"><summary>Переселить, вернуть деньги'+(isOwner()?', отменить':'')+'</summary>';
+    if(st.status==='in')h+='<div class="sec"><h3>Переселить на свободное место</h3></div>'+(fb.length?'<div class="grid"><div class="f"><label for="mBed">Новое место</label><select id="mBed">'+fb.map(function(b){return '<option value="'+b+'">'+bedLabel(b)+'</option>'}).join('')+'</select></div><div class="f" style="justify-content:flex-end"><button class="btn sm blue" type="button" data-act="move" data-id="'+id+'">Переселить</button></div></div><p class="hint">Заказ, оплата и срок остаются прежними, меняется только место.</p>':'<div class="empty">Свободных мест нет.</div>');
+    h+='<div class="sec"><h3>Вернуть деньги гостю</h3></div><div class="grid"><div class="f"><label for="rAmt">Сумма возврата, ₸</label><input id="rAmt" type="number" min="0" inputmode="numeric"></div><div class="f"><label for="rMet">Как вернули</label><select id="rMet">'+opts(C.methods)+'</select></div><div class="f w"><label for="rNote">Причина (видит владелец)</label><input id="rNote" autocomplete="off" placeholder="например: уехал на сутки раньше"></div></div><div class="btns"><button class="btn sm ghost" type="button" data-act="refund" data-id="'+id+'" data-pid="'+uid('p')+'">Записать возврат</button></div><p class="hint" style="margin-top:-4px">Возврат уменьшает сумму проживания и выручку. Наличный возврат уменьшает кассу.</p>';
+    if(isOwner())h+='<div class="sec"><h3>Отменить запись</h3></div><p class="hint" style="margin-top:0">Заселение и все его платежи перестанут учитываться. В таблице строки останутся с пометкой, кто и когда отменил.</p><div class="btns"><button class="btn sm ghost" type="button" data-act="cancel" data-kind="stay" data-id="'+id+'">Отменить заселение целиком</button></div>';
+    h+='<div class="err" id="xErr"></div></details>';
+  }
+  h+='<div class="sec"><h3>Платежи</h3><span>'+pays.length+'</span></div>'+(pays.length?'<div class="list">'+pays.map(function(p){return '<div class="row" style="cursor:default"><div><b>'+esc(p.kind)+'</b><span>'+dt(p.ts)+' · '+esc(p.method)+(p.admin?' · '+esc(p.admin):'')+(p.note?' · '+esc(p.note):'')+'</span></div><div class="amt '+(p.amount<0?'neg':'pos')+'">'+money(p.amount)+(isOwner()&&v3()?'<span><a href="#" data-act="cancel" data-kind="pay" data-id="'+p.id+'" data-back="'+id+'">отменить</a></span>':'')+'</div></div>'}).join('')+'</div>':'<div class="empty">Платежей нет.</div>');
+  openSheet(h);
+}
+function fOpen(){
+  openSheet(head('Приём смены')+'<div class="pl flat"><div><span>Принимает</span><b>'+esc(S.user.name)+'</b></div><div><span>Наличных должно быть в кассе</span><b>'+money(S.cash)+'</b></div></div><div class="grid" style="margin-top:12px"><div class="f w"><label for="oCnt">Пересчитали в кассе, ₸</label><input id="oCnt" type="number" min="0" inputmode="numeric" value="'+Math.max(0,S.cash)+'"></div></div><p class="hint">Пересчитайте наличные до начала работы. С этой минуты касса на вас, и время смены пошло.</p><div class="err" id="oErr"></div><div class="btns"><button class="btn" type="button" data-act="open-save" data-hid="'+uid('h')+'">Принять смену</button></div>');
+  calcOpen();
+}
+function calcOpen(){if(!$('oCnt'))return;var diff=(parseInt($('oCnt').value,10)||0)-S.cash;$('oErr').textContent=diff===0?'':(diff<0?'В кассе на '+money(-diff)+' меньше расчётного. Расхождение увидит владелец, оно запишется на момент приёма.':'В кассе на '+money(diff)+' больше расчётного. Это увидит владелец.')}
+function fShift(){
+  var exp=S.cash,sf=v3()?S.shift:null,occ=occNow(),ins=sf?insSince(sf.start):0;
+  var reached=C.bonus&&C.bonusFrom&&Math.max(occ,ins)>=C.bonusFrom;
+  openSheet(head('Закрытие смены')+'<div class="pl flat"><div><span>Смена</span><b>'+esc(sf?sf.admin:S.user.name)+'</b></div>'+(sf?'<div><span>Принята</span><b>'+dt(sf.start)+', '+hoursStr(Date.now()-sf.start)+'</b></div><div><span>Занято мест, заселено за смену</span><b>'+occ+' из '+total()+', '+ins+'</b></div>':'')+(C.rate!=null?'<div><span>Начислено за смену</span><b>'+money(C.rate)+'</b></div>':'')+(sf&&reached?'<div><span>Премия '+money(C.bonus)+'</span><b>решит владелец</b></div>':'')+'<div><span>Наличных должно быть в кассе</span><b>'+money(exp)+'</b></div></div><div class="grid" style="margin-top:12px"><div class="f w"><label for="hCnt">Пересчитали в кассе, ₸</label><input id="hCnt" type="number" min="0" inputmode="numeric" value="'+Math.max(0,exp)+'"></div><div class="f"><label for="hSal">Взяли на зарплату, ₸</label><input id="hSal" type="number" min="0" inputmode="numeric" value="0"></div><div class="f"><label for="hHan">Сдали владельцу, ₸</label><input id="hHan" type="number" min="0" inputmode="numeric" value="0"></div></div><p class="hint">Сначала пересчитайте кассу, потом берите зарплату и сдавайте деньги.</p><div class="err" id="hErr"></div><div class="btns"><button class="btn blue" type="button" data-act="shift-save" data-hid="'+(sf?sf.id:uid('h'))+'">Закрыть смену</button></div>');
+  calcShift();
+}
+function calcShift(){if(!$('hCnt'))return;var diff=(parseInt($('hCnt').value,10)||0)-S.cash;$('hErr').textContent=diff===0?'':(diff<0?'Недостача '+money(-diff)+'. Она попадёт в отчёт владельцу.':'Излишек '+money(diff)+'.')}
+function reportText(x){
+  var a=x.start||x.ts-D,b=x.ts,cash=sumPays(a,b+1,isCash),all=sumPays(a,b+1),ex=sumExp(a,b+1),df=x.counted-x.expected,debt=0,dn=0;
+  S.stays.forEach(function(s){var d=debtOf(s);if(d>0){debt+=d;dn++}});
+  var L=['Home Hostel №1. Отчёт за смену','Админ: '+x.admin,'Смена: '+(x.start?dt(x.start)+' → ':'')+dt(x.ts)+(x.hours?' ('+String(x.hours).replace('.',',')+' ч)':''),'','Занято мест: '+x.occ+' из '+total()+(x.late?' (время вышло у '+x.late+')':''),'Заселено за смену: '+x.checkins,'','Приход: '+money(all),'  наличные: '+money(cash),'  Kaspi и переводы: '+money(all-cash),'Расходы: '+money(ex),'','Касса по расчёту: '+money(x.expected),'Пересчитано: '+money(x.counted)+(df?' ('+(df<0?'недостача ':'излишек ')+money(Math.abs(df))+')':' (сошлось)'),'Взял на зарплату: '+money(x.salary),'Сдал владельцу: '+money(x.handed),'Осталось в кассе: '+money(x.counted-x.salary-x.handed)];
+  if(dn)L.push('','Должники: '+dn+', на '+money(debt));
+  if(x.bstate==='ждёт решения')L.push('','Набралось '+C.bonusFrom+' человек за смену. Премию решает владелец.');
+  return L.join('\n').replace(/ /g,' ');
+}
+function fReport(hid){
+  var x=null;S.shifts.forEach(function(h){if(h.id===hid)x=h});if(!x)return closeSheet();var t=reportText(x);
+  openSheet(head('Смена закрыта')+'<div class="memo" style="background:var(--card)">'+esc(t)+'</div><div class="btns"><a class="btn" style="text-decoration:none;background:var(--green)" target="_blank" rel="noopener" href="https://wa.me/'+esc(C.phone||'')+'?text='+encodeURIComponent(t)+'">Отправить в WhatsApp</a><button class="btn ghost" type="button" data-act="close">Готово</button></div><p class="hint">'+(C.phone?'Отчёт откроется в чате с владельцем, останется нажать «Отправить».':'Номер владельца не задан: WhatsApp попросит выбрать чат.')+'</p>');
+}
+function fBonus(hid){
+  var x=null;S.shifts.forEach(function(h){if(h.id===hid)x=h});if(!x)return;
+  openSheet(head('Премия за смену')+'<div class="pl flat"><div><span>Админ</span><b>'+esc(x.admin)+'</b></div><div><span>Смена</span><b>'+(x.start?dt(x.start)+' → ':'')+dt(x.ts)+'</b></div><div><span>Занято на закрытии</span><b>'+x.occ+(x.late?', время вышло у '+x.late:'')+'</b></div><div><span>Заселено за смену</span><b>'+x.checkins+'</b></div></div><div class="grid" style="margin-top:12px"><div class="f w"><label for="bAmt">Сумма премии, ₸</label><input id="bAmt" type="number" min="0" inputmode="numeric" value="'+(x.bonus||C.bonus)+'"></div></div><div class="err" id="bErr"></div><div class="btns"><button class="btn" style="background:var(--green)" type="button" data-act="bonus-yes" data-hid="'+hid+'">Дать премию</button><button class="btn ghost" type="button" data-act="bonus-no" data-hid="'+hid+'">Без премии</button></div>');
+}
+function fCfg(){
+  openSheet(head('Ставка и премия')+'<div class="grid"><div class="f w"><label for="gRate">Ставка за смену, ₸</label><input id="gRate" type="number" min="0" inputmode="numeric" value="'+C.rate+'"></div><div class="f"><label for="gFrom">Премия от, человек</label><input id="gFrom" type="number" min="0" inputmode="numeric" value="'+C.bonusFrom+'"></div><div class="f"><label for="gBon">Премия, ₸</label><input id="gBon" type="number" min="0" inputmode="numeric" value="'+C.bonus+'"></div><div class="f w"><label for="gPh">WhatsApp владельца для отчётов</label><input id="gPh" type="tel" inputmode="tel" placeholder="+7 700 000 00 00" value="'+esc(C.phone?'+'+C.phone:'')+'"></div></div><p class="hint">Новая ставка действует на смены, закрытые после сохранения. Прошлые смены не пересчитываются.</p><div class="err" id="gErr2"></div><div class="btns"><button class="btn blue" type="button" data-act="cfg-save">Сохранить</button></div>');
 }
 
 /* ===== окна ===== */
@@ -343,50 +475,9 @@ function closeSheet(){$('sheet').classList.remove('on');$('sheetIn').innerHTML='
 function head(t){return '<div class="sheet-h"><h2>'+t+'</h2><button class="x" type="button" data-act="close" aria-label="Закрыть">×</button></div>'}
 function opts(a,sel){return a.map(function(x){return '<option'+(x===sel?' selected':'')+'>'+esc(x)+'</option>'}).join('')}
 /* Номера записей создаются при открытии окна: повторное нажатие после обрыва связи не создаёт дубль. */
-function fCheckin(bed){
-  openSheet(head('Заселение')+'<p class="hint" style="margin:-4px 0 12px">'+bedLabel(bed)+' · номер заказа появится после сохранения</p><div class="grid">'+
-  '<div class="f w"><label for="cName">Имя гостя</label><input id="cName" autocomplete="off"></div>'+
-  '<div class="f w"><label for="cPhone">Телефон</label><input id="cPhone" type="tel" inputmode="tel" placeholder="+7"></div>'+
-  '<div class="f w"><label for="cTar">Тариф</label><select id="cTar">'+C.tariffs.map(function(t){return '<option value="'+esc(t.k)+'">'+esc(t.name)+' · '+money(t.price)+'</option>'}).join('')+'</select></div>'+
-  '<div class="f"><label for="cQty">Количество</label><input id="cQty" type="number" min="1" max="60" value="1" inputmode="numeric"></div>'+
-  '<div class="f"><label for="cIn">Заезд</label><input id="cIn" type="datetime-local" value="'+toLocalInput(Date.now())+'"></div>'+
-  '<div class="f"><label for="cPaid">Оплатил сейчас, ₸</label><input id="cPaid" type="number" min="0" inputmode="numeric"></div>'+
-  '<div class="f"><label for="cMet">Способ оплаты</label><select id="cMet">'+opts(C.methods)+'</select></div>'+
-  '<div class="f w"><label for="cSrc">Откуда узнал</label><select id="cSrc">'+opts(C.sources)+'</select></div></div>'+
-  '<div class="total"><span id="cInfo"></span><b id="cSum"></b></div><div class="err" id="cErr"></div>'+
-  '<div class="btns"><button class="btn" type="button" data-act="in-save" data-bed="'+bed+'" data-sid="'+uid('s')+'" data-pid="'+uid('p')+'">Заселить</button></div>');
-  calcIn(true);
-}
-function calcIn(setPaid){
-  if(!$('cTar'))return;var T=tariff($('cTar').value),q=Math.max(1,parseInt($('cQty').value,10)||1),sum=T.price*q,t0=new Date($('cIn').value).getTime()||Date.now();
-  $('cSum').textContent=money(sum);$('cInfo').textContent='Выезд: '+dt(t0+T.h*H*q);
-  if(setPaid)$('cPaid').value=sum;
-  var paid=parseInt($('cPaid').value,10)||0;$('cErr').textContent=paid<sum?'В долг останется '+money(sum-paid):'';
-}
-function fStay(id){
-  var st=stayById(id);if(!st)return closeSheet();var d=debtOf(st),T=tariff(st.tariff);
-  var pays=S.pays.filter(function(p){return p.stay===id}).sort(function(a,b){return b.ts-a.ts});
-  var h=head('Заказ №'+st.no)+'<div class="pl flat"><div><span>Гость</span><b>'+esc(st.name)+'</b></div><div><span>Телефон</span><b>'+(st.phone?'<a href="tel:'+esc(st.phone.replace(/[^+\d]/g,''))+'">'+esc(st.phone)+'</a>':'не указан')+'</b></div><div><span>Место</span><b>'+bedLabel(st.bed)+'</b></div><div><span>Тариф</span><b>'+esc(T.name)+(st.qty>1?' ×'+st.qty:'')+'</b></div><div><span>Заезд</span><b>'+dt(st.tin)+'</b></div><div><span>Выезд</span><b>'+dt(st.tout)+'</b></div><div><span>Проживание</span><b>'+money(st.sum)+'</b></div><div><span>Стирка и сушка</span><b>'+money(st.extra||0)+'</b></div><div><span>Оплачено</span><b>'+money(paidOf(st))+'</b></div><div><span>'+(d>0?'Долг':d<0?'Переплата':'Долг')+'</span><b class="'+(d>0?'neg':'pos')+'">'+money(Math.abs(d))+'</b></div><div><span>Заселил</span><b>'+esc(st.admin||'')+'</b></div></div>';
-  if(st.status==='in'){
-    h+='<div class="sec"><h3>Принять оплату или услугу</h3></div><div class="grid"><div class="f"><label for="pAmt">Сумма, ₸</label><input id="pAmt" type="number" min="0" inputmode="numeric" value="'+(d>0?d:'')+'"></div><div class="f"><label for="pMet">Способ</label><select id="pMet">'+opts(C.methods)+'</select></div></div>'+
-    '<div class="btns"><button class="btn sm" type="button" data-act="pay" data-id="'+id+'" data-pid="'+uid('p')+'">Принять оплату</button>'+C.services.map(function(s){return '<button class="btn sm ghost" type="button" data-act="svc" data-id="'+id+'" data-k="'+esc(s.name)+'" data-pid="'+uid('p')+'">'+esc(s.name)+' +'+s.price+'</button>'}).join('')+'</div>'+
-    (C.services.length?'<p class="hint" style="margin-top:-4px">Услуга записывается как оплаченная выбранным способом.</p>':'')+
-    '<div class="btns"><button class="btn sm blue" type="button" data-act="ext" data-id="'+id+'">Продлить на '+period(T.h)+' · '+money(T.price)+'</button><button class="btn sm ghost" type="button" data-act="out" data-id="'+id+'">Выселить</button></div>';
-  }
-  h+='<div class="err" id="sErr"></div>';
-  h+='<div class="sec"><h3>Платежи</h3><span>'+pays.length+'</span></div>'+(pays.length?'<div class="list">'+pays.map(function(p){return '<div class="row" style="cursor:default"><div><b>'+esc(p.kind)+'</b><span>'+dt(p.ts)+' · '+esc(p.method)+(p.admin?' · '+esc(p.admin):'')+'</span></div><div class="amt pos">'+money(p.amount)+'</div></div>'}).join('')+'</div>':'<div class="empty">Платежей нет.</div>');
-  openSheet(h);
-}
 function fExp(){
   openSheet(head('Расход')+'<div class="grid"><div class="f w"><label for="eCat">Статья</label><select id="eCat">'+opts(C.cats)+'</select></div><div class="f"><label for="eAmt">Сумма, ₸</label><input id="eAmt" type="number" min="0" inputmode="numeric"></div><div class="f"><label for="eFrom">Откуда деньги</label><select id="eFrom">'+opts(['Касса','Владелец'])+'</select></div><div class="f w"><label for="eNote">Комментарий</label><input id="eNote" autocomplete="off"></div></div><div class="err" id="eErr"></div><div class="btns"><button class="btn" type="button" data-act="exp-save" data-eid="'+uid('e')+'">Сохранить расход</button></div>');
 }
-function fShift(){
-  var exp=S.cash,occ=0;S.stays.forEach(function(s){if(s.status==='in')occ++});
-  var bon=C.bonus&&C.bonusFrom&&occ>=C.bonusFrom?C.bonus:0;
-  openSheet(head('Закрытие смены')+'<div class="pl flat"><div><span>Закрывает</span><b>'+esc(S.user.name)+'</b></div><div><span>Занято мест</span><b>'+occ+' из '+total()+'</b></div>'+(C.rate!=null?'<div><span>Начислено за смену</span><b>'+money(C.rate+bon)+(bon?' с бонусом':'')+'</b></div>':'')+'<div><span>Наличных должно быть в кассе</span><b>'+money(exp)+'</b></div></div><div class="grid" style="margin-top:12px"><div class="f w"><label for="hCnt">Пересчитали в кассе, ₸</label><input id="hCnt" type="number" min="0" inputmode="numeric" value="'+Math.max(0,exp)+'"></div><div class="f"><label for="hSal">Взяли на зарплату, ₸</label><input id="hSal" type="number" min="0" inputmode="numeric" value="0"></div><div class="f"><label for="hHan">Сдали владельцу, ₸</label><input id="hHan" type="number" min="0" inputmode="numeric" value="0"></div></div><p class="hint">Сначала пересчитайте кассу, потом берите зарплату и сдавайте деньги.</p><div class="err" id="hErr"></div><div class="btns"><button class="btn blue" type="button" data-act="shift-save" data-hid="'+uid('h')+'">Закрыть смену</button></div>');
-  calcShift();
-}
-function calcShift(){if(!$('hCnt'))return;var diff=(parseInt($('hCnt').value,10)||0)-S.cash;$('hErr').textContent=diff===0?'':(diff<0?'Недостача '+money(-diff)+'. Она попадёт в отчёт владельцу.':'Излишек '+money(diff)+'.')}
 function fPayout(){
   openSheet(head('Выплата зарплаты')+'<div class="grid"><div class="f w"><label for="yTo">Кому</label><select id="yTo">'+opts(C.admins||[])+'</select></div><div class="f"><label for="yAmt">Сумма, ₸</label><input id="yAmt" type="number" min="0" inputmode="numeric"></div><div class="f"><label for="yMet">Способ</label><select id="yMet">'+opts(C.methods,C.methods[2]||C.methods[0])+'</select></div><div class="f w"><label for="yNote">Комментарий</label><input id="yNote" autocomplete="off"></div></div><p class="hint">Сюда вносятся выплаты от владельца: перевод, аванс, наличные из своих. То, что админ взял из кассы при закрытии смены, уже учтено и на кассу эта запись не влияет.</p><div class="err" id="yErr"></div><div class="btns"><button class="btn blue" type="button" data-act="payout-save" data-yid="'+uid('y')+'">Сохранить выплату</button></div>');
 }
@@ -403,7 +494,17 @@ function act(a,el){
   if(!S)return;
   if(a==='logout')return logout();
   if(a==='refresh')return send(null,function(){toast('Обновлено.')});
-  if(a==='in')return fCheckin(el.getAttribute('data-bed'));
+  if(a==='in'){if(!canWork()){toast(S.shift?'Сейчас открыта смена: '+S.shift.admin+'.':'Сначала примите смену: кнопка вверху экрана.',true);return}return fCheckin(el.getAttribute('data-bed'))}
+  if(a==='open')return fOpen();
+  if(a==='open-save')return send({t:'open',hid:el.getAttribute('data-hid'),counted:num('oCnt')},function(){closeSheet();toast('Смена принята. Хорошей работы.')},'oErr');
+  if(a==='bonus')return fBonus(el.getAttribute('data-hid'));
+  if(a==='bonus-yes'){var bm=num('bAmt');if(!bm){$('bErr').textContent='Введите сумму премии.';return}return send({t:'bonus',hid:el.getAttribute('data-hid'),give:true,amount:bm},function(){closeSheet();toast('Премия начислена.')},'bErr')}
+  if(a==='bonus-no')return send({t:'bonus',hid:el.getAttribute('data-hid'),give:false},function(){closeSheet();toast('Записано: без премии.')},'bErr');
+  if(a==='cfg')return fCfg();
+  if(a==='cfg-save')return send({t:'cfg',rate:num('gRate'),bonusFrom:num('gFrom'),bonus:num('gBon'),phone:$('gPh').value.trim()},function(){closeSheet();toast('Сохранено.')},'gErr2');
+  if(a==='move'&&st)return send({t:'move',sid:id,bed:$('mBed').value},function(){fStay(id);toast('Гость переселён.')},'xErr');
+  if(a==='refund'&&st){var rm=num('rAmt'),rn=$('rNote').value.trim();if(!rm){$('xErr').textContent='Введите сумму возврата.';return}if(!rn){$('xErr').textContent='Напишите причину возврата.';return}return send({t:'refund',sid:id,pid:el.getAttribute('data-pid'),amount:rm,method:$('rMet').value,note:rn},function(){fStay(id);toast('Возврат записан.')},'xErr')}
+  if(a==='cancel'){var ck=el.getAttribute('data-kind'),bk=el.getAttribute('data-back');if(el.getAttribute('data-sure')!=='1'){el.setAttribute('data-sure','1');el.textContent=ck==='stay'?'Точно отменить заселение?':'точно отменить?';return}return send({t:'cancel',kind:ck,id:id},function(){if(bk&&stayById(bk))fStay(bk);else closeSheet();toast('Запись отменена.')})}
   if(a==='stay')return fStay(id);
   if(a==='gf'){guestFilter=el.getAttribute('data-v');return render()}
   if(a==='om'){ownerMonth=el.getAttribute('data-v');return render(true)}
@@ -414,7 +515,8 @@ function act(a,el){
   if(a==='memo')return send({t:'memo',text:$('memoT').value.trim()},function(){toast('Памятка сохранена. Админы увидят её на экране «Места».')},'memoErr');
   if(a==='in-save'){
     var name=$('cName').value.trim();if(!name){$('cErr').textContent='Введите имя гостя.';return}
-    return send({t:'checkin',sid:el.getAttribute('data-sid'),pid:el.getAttribute('data-pid'),bed:el.getAttribute('data-bed'),name:name,phone:$('cPhone').value.trim(),tariff:$('cTar').value,qty:Math.max(1,parseInt($('cQty').value,10)||1),tin:new Date($('cIn').value).getTime()||Date.now(),paid:num('cPaid'),method:$('cMet').value,src:$('cSrc').value},function(){closeSheet();toast('Гость заселён.')},'cErr');
+    if(v3()&&unitIn()!==tariff($('cTar').value).price&&!$('cNote').value.trim()){$('cErr').textContent='Цена отличается от тарифа. Напишите причину.';return}
+    return send({t:'checkin',sid:el.getAttribute('data-sid'),pid:el.getAttribute('data-pid'),bed:el.getAttribute('data-bed'),name:name,phone:$('cPhone').value.trim(),tariff:$('cTar').value,qty:Math.max(1,parseInt($('cQty').value,10)||1),tin:new Date($('cIn').value).getTime()||Date.now(),paid:num('cPaid'),method:$('cMet').value,src:$('cSrc').value,unit:v3()?unitIn():undefined,pnote:$('cNote')?$('cNote').value.trim():''},function(){closeSheet();toast('Гость заселён.')},'cErr');
   }
   if(a==='pay'&&st){var am=num('pAmt');if(!am){$('sErr').textContent='Введите сумму.';return}return send({t:'pay',sid:id,pid:el.getAttribute('data-pid'),amount:am,method:$('pMet').value},function(){fStay(id);toast('Оплата принята.')},'sErr')}
   if(a==='svc'&&st)return send({t:'svc',sid:id,pid:el.getAttribute('data-pid'),k:el.getAttribute('data-k'),method:$('pMet').value},function(){fStay(id);toast('Услуга записана.')},'sErr');
@@ -424,7 +526,7 @@ function act(a,el){
     return send({t:'out',sid:id},function(){closeSheet();toast('Гость выселен.')},'sErr');
   }
   if(a==='exp-save'){var ea=num('eAmt');if(!ea){$('eErr').textContent='Введите сумму.';return}return send({t:'exp',eid:el.getAttribute('data-eid'),cat:$('eCat').value,amount:ea,from:$('eFrom').value,note:$('eNote').value.trim()},function(){closeSheet();toast('Расход записан.')},'eErr')}
-  if(a==='shift-save')return send({t:'shift',hid:el.getAttribute('data-hid'),counted:num('hCnt'),salary:num('hSal'),handed:num('hHan')},function(){closeSheet();toast('Смена закрыта.')},'hErr');
+  if(a==='shift-save')return send({t:'shift',hid:el.getAttribute('data-hid'),counted:num('hCnt'),salary:num('hSal'),handed:num('hHan')},function(){if(v3())fReport(el.getAttribute('data-hid'));else{closeSheet();toast('Смена закрыта.')}},'hErr');
 }
 document.addEventListener('click',function(e){
   var t=e.target.closest('[data-act]');if(t){e.preventDefault();if(busy)return;return act(t.getAttribute('data-act'),t)}
@@ -433,7 +535,7 @@ document.addEventListener('click',function(e){
   if(e.target.id==='sheet'&&!busy)closeSheet();
 });
 document.addEventListener('input',function(e){
-  var i=e.target.id;if(i==='cTar'||i==='cQty'||i==='cIn')calcIn(true);else if(i==='cPaid')calcIn(false);else if(i==='hCnt')calcShift();
+  var i=e.target.id;if(i==='cTar'&&$('cUnit'))$('cUnit').value=tariff($('cTar').value).price;if(i==='cPhone')lookup();if((i==='rAmt'||i==='rNote')&&$('xErr'))$('xErr').textContent='';if(i==='oCnt')calcOpen();if(i==='cTar'||i==='cQty'||i==='cIn'||i==='cUnit')calcIn(true);else if(i==='cPaid')calcIn(false);else if(i==='hCnt')calcShift();
 });
 document.addEventListener('keydown',function(e){if(e.key==='Enter'&&e.target.id==='codeIn')login(e.target.value);if(e.key==='Enter'&&e.target.id==='apiIn'){var b=document.querySelector('[data-act="api-save"]');if(b)b.click()}});
 document.addEventListener('visibilitychange',function(){if(!document.hidden)refresh()});
