@@ -83,7 +83,7 @@ button:disabled{opacity:.55;cursor:default}
 .empty{color:var(--muted);font-size:14px;padding:14px;background:var(--card);border-radius:14px}
 .tabs{position:fixed;left:0;right:0;bottom:0;z-index:10;background:rgba(251,245,234,.95);backdrop-filter:blur(10px);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(4,1fr);padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px))}
 .tabs.three{grid-template-columns:repeat(3,1fr)}
-.tabs button{border:0;background:transparent;padding:8px 2px;border-radius:12px;font-size:12.5px;font-weight:600;color:var(--muted);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px}
+.tabs button{min-width:0;border:0;background:transparent;padding:8px 2px;border-radius:12px;font-size:12.5px;font-weight:600;color:var(--muted);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px}
 .tabs svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .tabs button.on{color:var(--blue);background:var(--blue-t)}
 body.locked .tabs,body.locked .who{display:none}
@@ -135,6 +135,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--blue)}
   <button data-t="beds" type="button"><svg viewBox="0 0 24 24"><path d="M3 18V6M21 18v-6a3 3 0 0 0-3-3H3M3 14h18M7 9V7"/></svg>Места</button>
   <button data-t="guests" type="button"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.5a6 6 0 0 1 3.5 5.5"/></svg>Гости</button>
   <button data-t="cash" type="button"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2.5"/><circle cx="12" cy="12" r="2.6"/><path d="M6.5 9.5v5M17.5 9.5v5"/></svg>Касса</button>
+  <button data-t="zp" type="button"><svg viewBox="0 0 24 24"><path d="M4 7h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h11M16 13.5h2"/></svg>ЗП</button>
   <button data-t="owner" type="button"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Владелец</button>
 </nav>
 
@@ -252,10 +253,11 @@ function render(keep){
   document.body.classList.toggle('locked',!S);
   if(!S){$('view').innerHTML=apiUrl()?vLogin():vSetup();return}
   if(tab==='owner'&&!isOwner())tab='beds';
+  if(tab==='zp'&&C.rate==null)tab='beds';
   $('whoBtn').textContent=S.user.name+(isOwner()?' · владелец':' · смена');
-  $('tabs').classList.toggle('three',!isOwner());
-  document.querySelectorAll('#tabs button').forEach(function(b){var t=b.getAttribute('data-t');b.classList.toggle('on',t===tab);if(t==='owner')b.style.display=isOwner()?'':'none'});
-  var h=tab==='beds'?vBeds():tab==='guests'?vGuests():tab==='cash'?vCash():vOwner();
+  document.querySelectorAll('#tabs button').forEach(function(b){var t=b.getAttribute('data-t');b.classList.toggle('on',t===tab);if(t==='owner')b.style.display=isOwner()?'':'none';if(t==='zp')b.style.display=C.rate!=null?'':'none'});
+  $('tabs').style.gridTemplateColumns='repeat('+(3+(isOwner()?1:0)+(C.rate!=null?1:0))+',1fr)';
+  var h=tab==='beds'?vBeds():tab==='guests'?vGuests():tab==='cash'?vCash():tab==='zp'?vZp():vOwner();
   $('view').innerHTML=h+'<p class="stamp">Данные на '+dt(loadedAt)+' · <a href="#" data-act="refresh">обновить</a></p>';
   window.scrollTo(0,keep?y:0);
 }
@@ -326,7 +328,6 @@ function vCash(){
   if(canWork())bt+='<button class="btn" type="button" data-act="exp">Записать расход</button>';
   if(!v3()||ms)bt+='<button class="btn blue" type="button" data-act="shift">Закрыть смену'+(ms&&isOwner()?': '+esc(ms.admin):'')+'</button>';
   if(bt)h+='<div class="btns">'+bt+'</div>';
-  if(!isOwner()&&S.my)h+='<div class="sec"><h3>Моя зарплата за '+mName(S.my.month).split(' ')[0]+'</h3><span>'+S.my.shifts+' '+plural(S.my.shifts,'смена','смены','смен')+(S.my.hours?', '+Math.round(S.my.hours)+' ч':'')+'</span></div><div class="pl"><div><span>Начислено'+(S.my.bonus?', с премией за '+S.my.bonus+' '+plural(S.my.bonus,'смену','смены','смен'):'')+'</span><b>'+money(S.my.accrued)+'</b></div>'+(S.my.wait?'<div><span>Премия на рассмотрении у владельца</span><b>'+S.my.wait+' '+plural(S.my.wait,'смена','смены','смен')+'</b></div>':'')+'<div><span>Получил</span><b>'+money(S.my.got)+'</b></div><div><span>Осталось получить</span><b>'+money(S.my.accrued-S.my.got)+'</b></div></div>';
   var ops=[];
   S.pays.forEach(function(p){if(inRange(p.ts,t0-D,t1)){var st=stayById(p.stay);ops.push({ts:p.ts,t:(p.kind===KIND_STAY?'Оплата':p.kind)+(st?' · '+st.name:''),s:p.method+(p.admin?' · '+p.admin:'')+(p.note?' · '+p.note:''),a:p.amount})}});
   S.exp.forEach(function(e){if(inRange(e.ts,t0-D,t1))ops.push({ts:e.ts,t:'Расход · '+e.cat,s:'из: '+e.from+(e.note?' · '+e.note:'')+(e.admin?' · '+e.admin:''),a:-e.amount,c:isOwner()&&v3()?e.id:''})});
@@ -340,14 +341,43 @@ function shiftRow(x){
   var df=x.counted-x.expected;
   return '<div class="row" style="cursor:default"><div><b>'+esc(x.admin)+'</b><span>'+(x.start?dt(x.start)+' → ':'')+dt(x.ts)+(x.hours?' · '+String(x.hours).replace('.',',')+' ч':'')+'</span>'+(x.rate?'<span>занято '+x.occ+(x.late?' (время вышло у '+x.late+')':'')+(x.start?', заселено '+x.checkins:'')+(x.bstate?' · премия: '+esc(x.bstate)+(x.bonus?' '+money(x.bonus):''):'')+'</span>':'')+'<span>взял '+money(x.salary)+' · сдано '+money(x.handed)+(x.openDiff?' · при приёме '+(x.openDiff<0?'недостача ':'излишек ')+money(Math.abs(x.openDiff)):'')+'</span></div><div class="amt '+(df<0?'neg':'pos')+'">'+(df===0?'сошлось':(df<0?'недостача ':'излишек ')+money(Math.abs(df)))+'</div></div>';
 }
+function waitHtml(){
+  var wait=S.shifts.filter(function(x){return x.bstate==='ждёт решения'}).sort(function(a,b){return b.ts-a.ts});
+  return wait.length?'<div class="sec"><h3>Премии на решении</h3><span>набралось '+C.bonusFrom+' человек за смену</span></div><div class="list">'+wait.map(function(x){return '<button class="row" type="button" data-act="bonus" data-hid="'+x.id+'"><div><b>'+esc(x.admin)+' · '+dOnly(x.ts)+'</b><span>занято на закрытии '+x.occ+(x.late?' (время вышло у '+x.late+')':'')+', заселено за смену '+x.checkins+'</span></div><div class="amt">'+money(C.bonus)+'<span>решить</span></div></button>'}).join('')+'</div>':'';
+}
+function vZp(){
+  var h='<h2>Зарплата</h2>',rule='<p class="hint" style="margin:6px 0 0">Ставка '+money(C.rate)+' за смену. Премия '+money(C.bonus)+', если за смену набралось '+C.bonusFrom+' человек: решение принимает владелец.</p>';
+  if(!isOwner()){
+    var my=S.my||{month:mKey(Date.now()),shifts:0,bonus:0,wait:0,accrued:0,got:0,hours:0};
+    h+=rule+'<div class="sec"><h3>'+esc(S.user.name)+', '+mName(my.month)+'</h3><span>'+my.shifts+' '+plural(my.shifts,'смена','смены','смен')+(my.hours?', '+Math.round(my.hours)+' ч':'')+'</span></div><div class="pl"><div><span>Начислено'+(my.bonus?', с премией за '+my.bonus+' '+plural(my.bonus,'смену','смены','смен'):'')+'</span><b>'+money(my.accrued)+'</b></div>'+(my.wait?'<div><span>Премия на рассмотрении у владельца</span><b>'+my.wait+' '+plural(my.wait,'смена','смены','смен')+'</b></div>':'')+'<div><span>Получил</span><b>'+money(my.got)+'</b></div><div><span>'+(my.accrued-my.got<0?'Получено больше начисленного':'Осталось получить')+'</span><b>'+money(Math.abs(my.accrued-my.got))+'</b></div></div>';
+    var mine=S.shifts.filter(function(x){return x.ts&&x.admin===S.user.name}).sort(function(a,b){return b.ts-a.ts});
+    h+='<div class="sec"><h3>Мои последние смены</h3><span>за 3 дня</span></div>'+(mine.length?'<div class="list">'+mine.map(shiftRow).join('')+'</div>':'<div class="empty">За последние 3 дня закрытых смен нет.</div>');
+    return h+'<p class="hint">«Получил» складывается из того, что вы взяли из кассы при закрытии смены, и выплат от владельца.</p>';
+  }
+  var ms=months(); if(!ownerMonth||ms.indexOf(ownerMonth)<0)ownerMonth=ms[ms.length-1];
+  var r=monthRange(ownerMonth),a=r[0],b=r[1];
+  h+=rule+waitHtml()+'<div class="seg" style="margin-top:14px">'+ms.map(function(k){return '<button type="button" data-act="om" data-v="'+k+'" class="'+(k===ownerMonth?'on':'')+'">'+mName(k)+'</button>'}).join('')+'</div>';
+  var zp={},zn=[],tot={a:0,t:0,p:0};function zc(n){if(!zp[n]){zp[n]={s:0,b:0,h:0,a:0,t:0,p:0};zn.push(n)}return zp[n]}
+  (C.admins||[]).forEach(zc);
+  S.shifts.forEach(function(x){if(x.ts&&inRange(x.ts,a,b)){var c=zc(x.admin);c.s++;if(x.bonus)c.b++;c.h+=x.hours||0;c.a+=x.accrued||0;c.t+=x.salary||0}});
+  (S.payouts||[]).forEach(function(x){if(inRange(x.ts,a,b))zc(x.to).p+=x.amount});
+  zn.forEach(function(n){tot.a+=zp[n].a;tot.t+=zp[n].t;tot.p+=zp[n].p});
+  h+='<div class="kpis"><div class="kpi"><span>Начислено за месяц</span><b>'+money(tot.a)+'</b></div><div class="kpi"><span>Осталось выплатить</span><b>'+money(tot.a-tot.t-tot.p)+'</b><small>взято из кассы '+money(tot.t)+', выплачено '+money(tot.p)+'</small></div></div>';
+  h+=zn.length?'<div class="list">'+zn.map(function(n){var c=zp[n],left=c.a-c.t-c.p;return '<div class="row" style="cursor:default"><div><b>'+esc(n)+'</b><span>'+c.s+' '+plural(c.s,'смена','смены','смен')+(c.h?', '+Math.round(c.h)+' ч':'')+', с премией '+c.b+' · начислено '+money(c.a)+'</span><span>взял из кассы '+money(c.t)+' · выплачено '+money(c.p)+'</span></div><div class="amt '+(left<0?'neg':'')+'">'+money(Math.abs(left))+'<span>'+(left<0?'перебрал':'к выплате')+'</span></div></div>'}).join('')+'</div>':'<div class="empty">Админов в листе «Доступ» нет.</div>';
+  h+='<div class="btns"><button class="btn sm blue" type="button" data-act="payout">Записать выплату</button><button class="btn sm ghost" type="button" data-act="cfg">Ставка и премия</button></div>';
+  var po=(S.payouts||[]).filter(function(x){return inRange(x.ts,a,b)}).sort(function(x,y){return y.ts-x.ts});
+  h+='<div class="sec"><h3>Выплаты от владельца</h3><span>'+po.length+'</span></div>'+(po.length?'<div class="list">'+po.map(function(x){return '<div class="row" style="cursor:default"><div><b>'+esc(x.to)+'</b><span>'+dt(x.ts)+' · '+esc(x.method)+(x.note?' · '+esc(x.note):'')+'</span></div><div class="amt">'+money(x.amount)+'</div></div>'}).join('')+'</div>':'<div class="empty">В этом месяце выплат не было.</div>');
+  var sh=S.shifts.filter(function(x){return x.ts&&inRange(x.ts,a,b)}).sort(function(x,y){return y.ts-x.ts});
+  h+='<div class="sec"><h3>Смены за месяц</h3><span>'+sh.length+'</span></div>'+(sh.length?'<div class="list">'+sh.map(shiftRow).join('')+'</div>':'<div class="empty">Закрытых смен нет.</div>');
+  return h+'<p class="hint">Та же сводка по месяцам лежит в Google Таблице на листе «ЗП».</p>';
+}
 function vOwner(){
   var ms=months(); if(!ownerMonth||ms.indexOf(ownerMonth)<0)ownerMonth=ms[ms.length-1];
   var st=monthStats(ownerMonth),pi=ms.indexOf(ownerMonth),prev=pi>0?monthStats(ms[pi-1]):null,T=total();
   function delta(a,b){if(!prev||!b)return '';var x=a/st.days,y=b/prev.days,p=Math.round((x-y)/Math.abs(y)*100);return '<small>в день '+(p>=0?'+':'−')+Math.abs(p)+'% к прошлому месяцу</small>'}
   var h='<h2>Кабинет владельца</h2>';
   if(S.user&&S.v===undefined)h+='<div class="bonus warn" style="margin-top:12px">Серверная часть в Google Таблице ещё старой версии. Приём смены, премии, скидки, возвраты и отмена записей заработают после её обновления.</div>';
-  var wait=S.shifts.filter(function(x){return x.bstate==='ждёт решения'}).sort(function(a,b){return b.ts-a.ts});
-  if(wait.length)h+='<div class="sec"><h3>Премии на решении</h3><span>набралось '+C.bonusFrom+' человек за смену</span></div><div class="list">'+wait.map(function(x){return '<button class="row" type="button" data-act="bonus" data-hid="'+x.id+'"><div><b>'+esc(x.admin)+' · '+dOnly(x.ts)+'</b><span>занято на закрытии '+x.occ+(x.late?' (время вышло у '+x.late+')':'')+', заселено за смену '+x.checkins+'</span></div><div class="amt">'+money(C.bonus)+'<span>решить</span></div></button>'}).join('')+'</div>';
+  h+=waitHtml();
   h+='<div class="seg" style="margin-top:12px">'+ms.map(function(k){return '<button type="button" data-act="om" data-v="'+k+'" class="'+(k===ownerMonth?'on':'')+'">'+mName(k)+'</button>'}).join('')+'</div>';
   h+='<div class="kpis"><div class="kpi"><span>Выручка</span><b>'+money(st.rev)+'</b>'+delta(st.rev,prev&&prev.rev)+'</div><div class="kpi '+(st.net>=0?'good':'bad')+'"><span>Чистыми</span><b>'+money(st.net)+'</b>'+delta(st.net,prev&&prev.net)+'</div><div class="kpi"><span>Гостей заселено</span><b>'+st.guests+'</b>'+delta(st.guests,prev&&prev.guests)+'</div><div class="kpi"><span>Загрузка</span><b>'+Math.round(st.occ*100)+'%</b><small>в среднем '+(st.occ*T).toFixed(1).replace('.',',')+' из '+T+' мест</small></div></div>';
   h+='<div class="sec"><h3>Итог за '+mName(ownerMonth)+'</h3><span>'+st.days+' дн.</span></div><div class="pl"><div><span>Выручка, наличные</span><b>'+money(st.cash)+'</b></div><div><span>Выручка, Kaspi и переводы</span><b>'+money(st.noncash)+'</b></div><div><span>Расходы</span><b class="neg">'+money(-st.exp)+'</b></div><div><span>Зарплата админов, начислено</span><b class="neg">'+money(-st.sal)+'</b></div><div><span>Остаётся владельцу</span><b>'+money(st.net)+'</b></div></div>';
@@ -358,20 +388,12 @@ function vOwner(){
   h+='<div class="sec"><h3>Расходы по статьям</h3></div>'+(cats.length?bars(cats,'t',money):'<div class="empty">Расходов нет.</div>');
   var src=Object.keys(st.src).map(function(k){return [k,st.src[k]]}).sort(function(a,b){return b[1]-a[1]});
   h+='<div class="sec"><h3>Откуда пришли гости</h3></div>'+(src.length?bars(src,'g'):'<div class="empty">Заселений нет.</div>');
-  if(C.rate!=null){
-    var zp={},zn=[];function zc(n){if(!zp[n]){zp[n]={s:0,b:0,h:0,a:0,t:0,p:0};zn.push(n)}return zp[n]}
-    (C.admins||[]).forEach(zc);
-    S.shifts.forEach(function(x){if(inRange(x.ts,st.a,st.b)){var c=zc(x.admin);c.s++;if(x.bonus)c.b++;c.h+=x.hours||0;c.a+=x.accrued||0;c.t+=x.salary||0}});
-    (S.payouts||[]).forEach(function(x){if(inRange(x.ts,st.a,st.b))zc(x.to).p+=x.amount});
-    h+='<div class="sec"><h3>Зарплата админов</h3><span>ставка '+money(C.rate)+', премия '+money(C.bonus)+' от '+C.bonusFrom+' чел.</span></div>'+(zn.length?'<div class="list">'+zn.map(function(n){var c=zp[n],left=c.a-c.t-c.p;return '<div class="row" style="cursor:default"><div><b>'+esc(n)+'</b><span>'+c.s+' '+plural(c.s,'смена','смены','смен')+(c.h?', '+Math.round(c.h)+' ч':'')+', с премией '+c.b+' · начислено '+money(c.a)+'</span><span>взял из кассы '+money(c.t)+' · выплачено '+money(c.p)+'</span></div><div class="amt '+(left<0?'neg':'')+'">'+money(Math.abs(left))+'<span>'+(left<0?'перебрал':'к выплате')+'</span></div></div>'}).join('')+'</div>':'<div class="empty">Админов в листе «Доступ» нет.</div>')+'<div class="btns"><button class="btn sm blue" type="button" data-act="payout">Записать выплату</button><button class="btn sm ghost" type="button" data-act="cfg">Ставка и премия</button></div>';
-  }
   var sh=S.shifts.filter(function(x){return inRange(x.ts,st.a,st.b)}).sort(function(a,b){return b.ts-a.ts}),bad=sh.filter(function(x){return x.counted!==x.expected||x.openDiff});
   h+='<div class="sec"><h3>Смены</h3><span>закрыто '+sh.length+', с расхождением '+bad.length+'</span></div>'+(sh.length?'<div class="list">'+sh.slice(0,10).map(shiftRow).join('')+'</div>':'<div class="empty">Смены в этом месяце не закрывали.</div>');
   var dr=[];
-  S.stays.forEach(function(s){if(s.disc&&inRange(s.tin,st.a,st.b))dr.push({ts:s.tin,id:s.id,t:(s.disc>0?'Скидка':'Наценка')+' · '+s.name,s:(s.note||'без причины')+' · '+(s.admin||''),a:-s.disc})});
   S.pays.forEach(function(p){if(p.kind===KIND_REFUND&&inRange(p.ts,st.a,st.b)){var s=stayById(p.stay);dr.push({ts:p.ts,id:p.stay,t:'Возврат'+(s?' · '+s.name:''),s:(p.note||'')+' · '+p.method+' · '+(p.admin||''),a:p.amount})}});
   dr.sort(function(a,b){return b.ts-a.ts});
-  if(v3())h+='<div class="sec"><h3>Скидки и возвраты</h3><span>'+money(dr.reduce(function(s,x){return s+x.a},0))+'</span></div>'+(dr.length?'<div class="list">'+dr.slice(0,20).map(function(o){return '<button class="row" type="button" data-act="stay" data-id="'+o.id+'"><div><b>'+esc(o.t)+'</b><span>'+dt(o.ts)+' · '+esc(o.s)+'</span></div><div class="amt neg">'+money(o.a)+'</div></button>'}).join('')+'</div>':'<div class="empty">В этом месяце скидок и возвратов не было.</div>');
+  if(v3())h+='<div class="sec"><h3>Возвраты</h3><span>'+money(dr.reduce(function(s,x){return s+x.a},0))+'</span></div>'+(dr.length?'<div class="list">'+dr.slice(0,20).map(function(o){return '<button class="row" type="button" data-act="stay" data-id="'+o.id+'"><div><b>'+esc(o.t)+'</b><span>'+dt(o.ts)+' · '+esc(o.s)+'</span></div><div class="amt neg">'+money(o.a)+'</div></button>'}).join('')+'</div>':'<div class="empty">В этом месяце возвратов не было.</div>');
   var deb=S.stays.filter(function(s){return debtOf(s)>0}).sort(function(a,b){return debtOf(b)-debtOf(a)});
   h+='<div class="sec"><h3>Должники</h3><span>'+money(deb.reduce(function(s,x){return s+debtOf(x)},0))+'</span></div>'+(deb.length?'<div class="list">'+deb.slice(0,12).map(stayRow).join('')+'</div>':'<div class="empty">Долгов нет.</div>');
   h+='<div class="sec"><h3>Памятка для админов</h3><span>видна на экране «Места»</span></div><textarea id="memoT" aria-label="Памятка для админов">'+esc(C.memo)+'</textarea><div class="btns"><button class="btn blue" type="button" data-act="memo">Сохранить памятку</button></div><div class="err" id="memoErr"></div>';
@@ -383,8 +405,7 @@ function fCheckin(bed){
   '<div class="f w"><label for="cName">Имя гостя</label><input id="cName" autocomplete="off"></div>'+
   '<div class="f w"><label for="cTar">Тариф</label><select id="cTar">'+C.tariffs.map(function(t){return '<option value="'+esc(t.k)+'">'+esc(t.name)+' · '+money(t.price)+'</option>'}).join('')+'</select></div>'+
   '<div class="f"><label for="cQty">Количество</label><input id="cQty" type="number" min="1" max="60" value="1" inputmode="numeric"></div>'+
-  (v3()?'<div class="f"><label for="cUnit">Цена за период, ₸</label><input id="cUnit" type="number" min="0" inputmode="numeric"></div><div class="f w" id="cNoteF" style="display:none"><label for="cNote">Причина другой цены (видит владелец)</label><input id="cNote" autocomplete="off"></div>':'')+
-  '<div class="f'+(v3()?' w':'')+'"><label for="cIn">Заезд</label><input id="cIn" type="datetime-local" value="'+toLocalInput(Date.now())+'"></div>'+
+  '<div class="f"><label for="cIn">Заезд</label><input id="cIn" type="datetime-local" value="'+toLocalInput(Date.now())+'"></div>'+
   '<div class="f"><label for="cPaid">Оплатил сейчас, ₸</label><input id="cPaid" type="number" min="0" inputmode="numeric"></div>'+
   '<div class="f"><label for="cMet">Способ оплаты</label><select id="cMet">'+opts(C.methods)+'</select></div>'+
   '<div class="f w"><label for="cSrc">Откуда узнал</label><select id="cSrc">'+opts(C.sources)+'</select></div></div>'+
