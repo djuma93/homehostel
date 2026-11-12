@@ -208,6 +208,11 @@ footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .bar p b{display:block;color:var(--ink);font-size:16px}
 .bar .btn{gap:0;min-height:48px;padding:0 20px;font-size:16px;white-space:nowrap}
 
+.top-r{display:flex;align-items:center;gap:14px;flex:none}
+.lang{display:flex;gap:2px;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:3px;flex:none}
+.lang button{border:0;background:transparent;font:inherit;font-size:12.5px;font-weight:700;color:var(--muted);padding:7px 9px;border-radius:999px;cursor:pointer;line-height:1}
+.lang button[aria-pressed="true"]{background:var(--blue);color:#fff}
+@media (max-width:1040px){.open{display:none}}
 @media (max-width:900px){
   .nav{display:none}
   .loc{grid-template-columns:1fr}
@@ -252,6 +257,11 @@ footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
   
 }
 @media (max-width:360px){
+  .logo{gap:6px}
+  .logo-word{font-size:14.5px}
+  .logo-no{width:28px;height:28px;font-size:10px;border-width:2px}
+  .lang button{padding:6px 6px;font-size:11.5px}
+  .top{gap:8px}
   .bar p{font-size:12.5px}
   .bar .btn{padding:0 16px}
   .lead{font-size:15px}
@@ -262,8 +272,15 @@ footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
 
 <header class="wrap top">
   <a class="logo" href="#top" aria-label="Home Hostel №1"><span class="logo-word">Home Hostel</span><span class="logo-no">№1</span></a>
-  <nav class="nav" aria-label="Разделы сайта"><a href="#amenities">Удобства</a><a href="#photos">Фото</a><a href="#prices">Цены</a><a href="#location">Адрес</a></nav>
-  <div class="open"><span class="dot" aria-hidden="true"></span><span>Открыто <span class="short">24/7</span><span class="long">круглосуточно · <span id="clock">24/7</span></span></span></div>
+  <nav class="nav" aria-label="Разделы сайта"><a href="#amenities" data-i18n="nav_amen"></a><a href="#photos" data-i18n="nav_photos"></a><a href="#prices" data-i18n="nav_prices"></a><a href="#location" data-i18n="nav_addr"></a></nav>
+  <div class="top-r">
+    <div class="open"><span class="dot" aria-hidden="true"></span><span id="openText"></span></div>
+    <div class="lang" role="group" aria-label="Язык / Тіл / Language">
+      <button type="button" data-lang="ru" aria-label="Русский">RU</button>
+      <button type="button" data-lang="kk" aria-label="Қазақша">ҚАЗ</button>
+      <button type="button" data-lang="en" aria-label="English">EN</button>
+    </div>
+  </div>
 </header>
 
 <main id="top">
@@ -271,54 +288,54 @@ footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
   <div class="hero-grid">
     <div>
       <a class="rating" href="https://2gis.kz/almaty/firm/70000001095112441/tab/reviews" target="_blank" rel="noopener">
-        <span class="stars" aria-hidden="true">★★★★★</span><span>5.0 в 2ГИС</span><span>114 оценок</span>
+        <span class="stars" aria-hidden="true">★★★★★</span><span data-i18n="rating"></span><span data-i18n="ratings_n"></span>
       </a>
-      <h1>Хостел, где <em>как дома</em></h1>
-      <p class="lead">Чисто, тихо и по-домашнему. Своя кровать со шторкой, шкафчик с ключом и горячий чай на кухне. Места <span data-price-from>от 2 500 ₸</span> за 12 часов, сутки 3 000 ₸. Заселяем круглосуточно.</p>
+      <h1 data-i18n-html="h1"></h1>
+      <p class="lead" id="lead"></p>
       <div class="cta-row">
-        <a class="btn btn-main" href="#book">Быстрая бронь</a>
-        <a class="btn btn-ghost" data-wa href="https://wa.me/77088134595" target="_blank" rel="noopener">Написать в WhatsApp</a>
+        <a class="btn btn-main" href="#book" data-i18n="book"></a>
+        <a class="btn btn-ghost" data-wa href="https://wa.me/77088134595" target="_blank" rel="noopener" data-i18n="wa"></a>
       </div>
     </div>
     <figure class="hero-photo">
       <span class="dab" aria-hidden="true"></span>
-      <img src="img/hero.jpg" alt="Комната хостела: двухъярусные кровати со шторками" width="960" height="1280">
-      <span class="sticker hand">Чай и печенье <i>за наш счёт</i></span>
-      <div class="plate" role="img" aria-label="Адресная табличка: улица Борзова, 47">
-        <div class="plate-in"><small>улица<br>Борзова</small><b>47</b></div>
+      <img id="heroImg" src="img/hero.jpg" alt="" width="960" height="1280">
+      <span class="sticker hand" data-i18n-html="sticker"></span>
+      <div class="plate" role="img" aria-label="Борзова, 47">
+        <div class="plate-in"><small data-i18n-html="plate"></small><b>47</b></div>
       </div>
     </figure>
   </div>
 
   <div class="quick" id="book">
-    <div class="quick-head"><h2>Быстрая бронь</h2><span class="hand">ответим за пару минут</span></div>
+    <div class="quick-head"><h2 data-i18n="book"></h2><span class="hand" data-i18n="quick_hand"></span></div>
     <form id="bookForm" novalidate>
-      <div class="f"><label for="fDate">Дата заезда</label><input id="fDate" type="date"></div>
-      <div class="f"><label for="fNights">Суток</label><input id="fNights" type="number" min="1" max="365" value="1" inputmode="numeric"></div>
-      <div class="f"><label for="fGuests">Гостей</label><input id="fGuests" type="number" min="1" max="25" value="1" inputmode="numeric"></div>
-      <div class="f"><label for="fType">Формат</label><select id="fType"></select></div>
+      <div class="f"><label for="fDate" data-i18n="f_date"></label><input id="fDate" type="date"></div>
+      <div class="f"><label for="fNights" data-i18n="f_days"></label><input id="fNights" type="number" min="1" max="365" value="1" inputmode="numeric"></div>
+      <div class="f"><label for="fGuests" data-i18n="f_guests"></label><input id="fGuests" type="number" min="1" max="25" value="1" inputmode="numeric"></div>
+      <div class="f"><label for="fType" data-i18n="f_type"></label><select id="fType"></select></div>
       <div class="quick-foot">
-        <div class="sum"><span id="sumText">1 гость · 1 ночь</span><b id="sumPrice">от 2 500 ₸</b></div>
-        <a class="btn btn-main" id="sendBtn" href="https://wa.me/77088134595" target="_blank" rel="noopener">Забронировать в WhatsApp</a>
+        <div class="sum"><span id="sumText"></span><b id="sumPrice"></b></div>
+        <a class="btn btn-main" id="sendBtn" href="https://wa.me/77088134595" target="_blank" rel="noopener" data-i18n="send"></a>
       </div>
-      <p class="note">Откроется WhatsApp с готовым сообщением. Сумма предварительная, точную цену и наличие мест подтвердит администратор. Телефон: <span data-phone>+7 708 813 45 95</span>.</p>
+      <p class="note" id="note"></p>
     </form>
   </div>
 
   <div class="facts">
-    <div><b>5.0</b><span>рейтинг в 2ГИС</span></div>
-    <div><b>56</b><span>отзывов гостей</span></div>
-    <div><b>25</b><span>мест в 4 комнатах</span></div>
-    <div><b>24/7</b><span>заселение</span></div>
+    <div><b>5.0</b><span data-i18n="fact_rating"></span></div>
+    <div><b>56</b><span data-i18n="fact_reviews"></span></div>
+    <div><b>25</b><span data-i18n="fact_beds"></span></div>
+    <div><b>24/7</b><span data-i18n="fact_checkin"></span></div>
   </div>
 </div>
 
 <section id="amenities">
   <div class="wrap">
     <div class="sec-head">
-      <span class="eyebrow">как дома</span>
-      <h2>Всё для жизни уже на месте</h2>
-      <p>Берите с собой только личные вещи.</p>
+      <span class="eyebrow" data-i18n="amen_eye"></span>
+      <h2 data-i18n="amen_h"></h2>
+      <p data-i18n="amen_p"></p>
     </div>
     <ul class="amen" id="amenList"></ul>
   </div>
@@ -327,12 +344,12 @@ footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
 <section id="photos">
   <div class="wrap">
     <div class="sec-head">
-      <span class="eyebrow">загляните внутрь</span>
-      <h2>Вот так у нас</h2>
+      <span class="eyebrow" data-i18n="ph_eye"></span>
+      <h2 data-i18n="ph_h"></h2>
     </div>
     <div class="shots" id="shotList"></div>
     <div class="cta-row">
-      <a class="btn btn-ghost" href="https://2gis.kz/almaty/gallery/firm/70000001095112441" target="_blank" rel="noopener">Все фото в 2ГИС</a>
+      <a class="btn btn-ghost" href="https://2gis.kz/almaty/gallery/firm/70000001095112441" target="_blank" rel="noopener" data-i18n="ph_btn"></a>
     </div>
   </div>
 </section>
@@ -340,12 +357,12 @@ footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
 <section id="praise">
   <div class="wrap">
     <div class="sec-head">
-      <span class="eyebrow">56 отзывов в 2ГИС</span>
-      <h2>За что нас хвалят гости</h2>
+      <span class="eyebrow" data-i18n="pr_eye"></span>
+      <h2 data-i18n="pr_h"></h2>
     </div>
     <ul class="praise" id="praiseList"></ul>
     <div class="cta-row">
-      <a class="btn btn-ghost" href="https://2gis.kz/almaty/firm/70000001095112441/tab/reviews" target="_blank" rel="noopener">Читать отзывы в 2ГИС</a>
+      <a class="btn btn-ghost" href="https://2gis.kz/almaty/firm/70000001095112441/tab/reviews" target="_blank" rel="noopener" data-i18n="pr_btn"></a>
     </div>
   </div>
 </section>
@@ -353,19 +370,10 @@ footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
 <section id="who">
   <div class="wrap">
     <div class="sec-head">
-      <span class="eyebrow">кому подойдёт</span>
-      <h2>На ночь, на вахту, на сезон</h2>
+      <span class="eyebrow" data-i18n="who_eye"></span>
+      <h2 data-i18n="who_h"></h2>
     </div>
-    <div class="who">
-      <article>
-        <span class="tag">Чаще всего</span>
-        <h3>Работаете в Алматы</h3>
-        <p>Гости живут у нас от двух недель до нескольких месяцев. Месяц от 50 000 ₸: дешевле аренды квартиры и без коммунальных счетов.</p>
-      </article>
-      <article><h3>Командировка</h3><p>Заселение в любое время, в том числе ночью с поезда или самолёта.</p></article>
-      <article><h3>Бригада или компания</h3><p>Комнаты на 3, 6 и 8 мест. Напишите заранее, сколько вас, и мы постараемся поселить всех вместе.</p></article>
-      <article><h3>Проездом на пару ночей</h3><p>Приехали по делам, на учёбу или к врачу. Чистая кровать, душ и кухня, без лишних трат.</p></article>
-    </div>
+    <div class="who" id="whoList"></div>
   </div>
 </section>
 
@@ -374,12 +382,12 @@ footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
   <div class="band-in">
     <div class="wrap">
       <div class="sec-head">
-        <span class="eyebrow">цены</span>
-        <h2>Чем дольше живёте, тем дешевле</h2>
-        <p>Время считается с момента заезда. Стирка и сушка по 500 ₸.</p>
+        <span class="eyebrow" data-i18n="price_eye"></span>
+        <h2 data-i18n="price_h"></h2>
+        <p data-i18n="price_p"></p>
       </div>
       <ul class="tariffs" id="tariffList"></ul>
-      <div class="cta-row"><a class="btn btn-light" data-wa href="https://wa.me/77088134595" target="_blank" rel="noopener">Узнать цену на мой срок</a></div>
+      <div class="cta-row"><a class="btn btn-light" data-wa href="https://wa.me/77088134595" target="_blank" rel="noopener" data-i18n="price_btn"></a></div>
     </div>
   </div>
 </div>
@@ -387,20 +395,20 @@ footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
 <section id="location">
   <div class="wrap">
     <div class="sec-head">
-      <span class="eyebrow">как добраться</span>
-      <h2>Мы в Жетысуском районе</h2>
+      <span class="eyebrow" data-i18n="loc_eye"></span>
+      <h2 data-i18n="loc_h"></h2>
     </div>
     <div class="loc">
       <div>
-        <address>ул. Борзова, 47<br>Алматы</address>
-        <p>Двухэтажный дом. Ориентир: ТЦ Maxima. Постройте маршрут в 2ГИС, он доведёт до входа.</p>
-        <a class="btn btn-main" href="https://2gis.kz/almaty/firm/70000001095112441" target="_blank" rel="noopener">Маршрут в 2ГИС</a>
+        <address data-i18n-html="loc_addr"></address>
+        <p data-i18n="loc_p"></p>
+        <a class="btn btn-main" href="https://2gis.kz/almaty/firm/70000001095112441" target="_blank" rel="noopener" data-i18n="loc_btn"></a>
       </div>
       <div class="contacts">
         <a data-wa href="https://wa.me/77088134595" target="_blank" rel="noopener">WhatsApp <span data-phone>+7 708 813 45 95</span></a>
-        <a data-tel href="tel:+77088134595">Позвонить <span data-phone>+7 708 813 45 95</span></a>
+        <a data-tel href="tel:+77088134595"><span style="color:inherit;font-weight:inherit" data-i18n="call"></span> <span data-phone>+7 708 813 45 95</span></a>
         <a data-ig href="https://instagram.com/homehostelnomer1" target="_blank" rel="noopener">Instagram <span data-ig-name>@homehostelnomer1</span></a>
-        <a href="https://2gis.kz/almaty/firm/70000001095112441/tab/reviews" target="_blank" rel="noopener">Отзывы <span>56 в 2ГИС</span></a>
+        <a href="https://2gis.kz/almaty/firm/70000001095112441/tab/reviews" target="_blank" rel="noopener"><span style="color:inherit;font-weight:inherit" data-i18n="reviews"></span> <span data-i18n="reviews_n"></span></a>
       </div>
     </div>
   </div>
@@ -409,8 +417,8 @@ footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
 <section id="faq">
   <div class="wrap">
     <div class="sec-head">
-      <span class="eyebrow">частые вопросы</span>
-      <h2>Коротко о главном</h2>
+      <span class="eyebrow" data-i18n="faq_eye"></span>
+      <h2 data-i18n="faq_h"></h2>
     </div>
     <div id="faqList"></div>
   </div>
@@ -418,84 +426,150 @@ footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
 </main>
 
 <footer>
-  <div class="wrap"><span>Home-Hostel №1 · Алматы, ул. Борзова, 47</span><span>Круглосуточно · <span data-phone>+7 708 813 45 95</span></span></div>
+  <div class="wrap"><span data-i18n="foot_addr"></span><span><span data-i18n="foot_open"></span> · <span data-phone>+7 708 813 45 95</span></span></div>
 </footer>
 
 <div class="bar">
   <div class="wrap">
-    <p><b data-price-from-night>от 2 500 ₸</b>12 часов · сутки 3 000 ₸</p>
-    <a class="btn btn-main" data-wa href="https://wa.me/77088134595" target="_blank" rel="noopener"><span class="long">Написать в&nbsp;</span>WhatsApp</a>
+    <p><b id="barFrom"></b><span id="barSub"></span></p>
+    <a class="btn btn-main" data-wa href="https://wa.me/77088134595" target="_blank" rel="noopener">WhatsApp</a>
   </div>
 </div>
 
 <script>
 /* ==========================================================================
-   ДАННЫЕ ХОСТЕЛА. Всё, что меняется, правится только здесь.
-   Пометка «уточнить» стоит там, где данные ещё не подтверждены владельцем.
+   ДАННЫЕ ХОСТЕЛА. Цены, телефон и фото правятся в HOSTEL.
+   Тексты на трёх языках лежат ниже в I18N: ru, kk, en.
    ========================================================================== */
 var HOSTEL = {
   phone: '77088134595',                 // номер WhatsApp без плюса
   phoneText: '+7 708 813 45 95',
   instagram: 'homehostelnomer1',
-  priceFrom: 2500,                      // минимальная цена: место на 12 часов, ₸
+  price12: 2500,                        // место на 12 часов, ₸
+  priceDay: 3000,                       // место на сутки, ₸
+  priceMonthUp: 50000,                  // месяц, верхнее место
+  priceMonthLow: 55000,                 // месяц, нижнее место
+  // порядок форматов в форме брони; названия в I18N.*.formats в том же порядке
+  formats: [ { kind: 'day', price: 3000 }, { kind: 'half', price: 2500 }, { kind: 'month', price: 50000 }, { kind: 'month', price: 55000 } ],
+  // цены в блоке «Цены»; подписи в I18N.*.tariffs в том же порядке
+  tariffPrices: [2500, 3000, 50000, 55000],
+  // иконки удобств; подписи в I18N.*.amenities в том же порядке
+  amenIcons: ['bed','lock','cup','shower','washer','wifi','pillow','moon','qr','cam','yard','iron'],
+  // фото галереи; подписи в I18N.*.photos в том же порядке
+  photos: ['img/room-1.jpg','img/room-2.jpg','img/room-3.jpg','img/lockers.jpg']
+};
 
-  formats: [                            // варианты в форме брони
-    { name: 'Место на сутки', kind: 'day', price: 3000 },
-    { name: 'Место на 12 часов', kind: 'half', price: 2500 },
-    { name: 'Месяц, верхнее место', kind: 'month', price: 50000 },
-    { name: 'Месяц, нижнее место', kind: 'month', price: 55000 }
-  ],
-
-  tariffs: [                            // блок «Цены» (уточнить всё, кроме суток)
-    { name: '12 часов',        price: '2 500 ₸', note: 'Переночевать или отдохнуть днём' },
-    { name: 'сутки',       price: '3 000 ₸',  note: 'Продление в то же время на следующий день' },
-    { name: 'месяц, верх',        price: '50 000 ₸',  note: 'Верхнее место' },
-    { name: 'месяц, низ', price: '55 000 ₸',  note: 'Нижнее место' }
-  ],
-
-  // блок удобств. icon: bed, lock, cup, shower, washer, wifi, pillow, moon, qr
-  amenities: [
-    { icon: 'bed',    title: 'Шторка у кровати',  text: 'Своё закрытое место, можно выспаться.' },
-    { icon: 'lock',   title: 'Шкафчик с ключом',  text: 'Личный шкаф для вещей и документов.' },
-    { icon: 'cup',    title: 'Кухня и чай',       text: 'Чай, сахар и печенье бесплатно.' },
-    { icon: 'shower', title: 'Две душевые',       text: 'И туалет, в доме у входа.' },
-    { icon: 'washer', title: 'Стирка и сушка',    text: 'Стирка 500 ₸, сушка 500 ₸.' },
-    { icon: 'wifi',   title: 'Wi-Fi',             text: 'Бесплатный для всех гостей.' },
-    { icon: 'pillow', title: 'Чистое бельё',      text: 'Свежая постель и регулярная смена.' },
-    { icon: 'moon',   title: 'Тихо ночью',        text: 'Комнаты на 3, 6 и 8 мест.' },
-    { icon: 'qr',     title: 'Kaspi QR',          text: 'Перевод или наличные, как удобно.' },
-    { icon: 'cam',    title: 'Камеры',            text: 'Видеонаблюдение для вашей безопасности.' },
-    { icon: 'yard',   title: 'Свой двор',         text: 'Есть место для курения.' },
-    { icon: 'iron',   title: 'Утюг и фен',        text: 'И вентиляторы в комнатах.' }
-  ],
-
-  photos: [                             // блок «Фото»: файл из папки img и подпись
-    { file: 'img/room-1.jpg',  caption: 'комната',   alt: 'Комната с тремя двухъярусными кроватями и ковром' },
-    { file: 'img/room-2.jpg',  caption: 'кровати',   alt: 'Двухъярусные кровати со шторками' },
-    { file: 'img/room-3.jpg',  caption: 'шторки',    alt: 'Кровати со шторками и картина на стене' },
-    { file: 'img/lockers.jpg', caption: 'шкафчики',  alt: 'Личные шкафчики с номерами и ключами' }
-  ],
-
-  praise: [                             // блок «За что хвалят»: темы из отзывов 2ГИС
-    { title: 'Чистота',        text: 'Самая частая похвала в отзывах: порядок в комнатах, на кухне и в душе.' },
-    { title: 'Тишина и уют',   text: 'Гости пишут, что ночью спокойно и чувствуешь себя как дома.' },
-    { title: 'Отзывчивые админы', text: 'Вежливо встречают и быстро решают любой вопрос.' }
-  ],
-
-  faq: [                                // блок «Частые вопросы» (правила уточнить)
-    { q: 'Можно заселиться ночью?', a: 'Да. Хостел работает круглосуточно, администратор встретит в любое время. Напишите заранее в WhatsApp, чтобы за вами оставили место.' },
-    { q: 'Что нужно для заселения?', a: 'Удостоверение личности. Оплата при заселении: Kaspi QR, перевод или наличные. Предоплата по желанию.' },
-    { q: 'Где хранить вещи?', a: 'У каждого гостя свой шкафчик с ключом.' },
-    { q: 'Сколько стоит на неделю или месяц?', a: 'Месяц на верхнем месте стоит 50 000 ₸, на нижнем 55 000 ₸. До месяца оплата посуточно, 3 000 ₸ за сутки.' },
-    { q: 'Как считается время?', a: 'С момента вашего заезда. Сутки заканчиваются через 24 часа в это же время, тариф на 12 часов через 12. Продление считается так же.' },
-    { q: 'Есть ли возврат при раннем выезде?', a: 'Нет, оплата не возвращается. Берите срок, в котором уверены: продлить можно в любой момент.' },
-    { q: 'Можно ли курить и выпивать?', a: 'Курить можно только во дворе, в отведённом месте. Гостей в состоянии опьянения не заселяем.' }
-  ]
+var I18N = {
+ru: {
+  title: 'Home Hostel №1 — хостел в Алматы, ул. Борзова 47 | от 2 500 ₸',
+  nav_amen:'Удобства', nav_photos:'Фото', nav_prices:'Цены', nav_addr:'Адрес',
+  open:'Открыто круглосуточно', clock:'в Алматы',
+  rating:'5.0 в 2ГИС', ratings_n:'114 оценок',
+  h1:'Хостел, где <em>как дома</em>',
+  lead:'Чисто, тихо и по-домашнему. Своя кровать со шторкой, шкафчик с ключом и горячий чай на кухне. Места от {p12} за 12 часов, сутки {pday}. Заселяем круглосуточно.',
+  book:'Быстрая бронь', wa:'Написать в WhatsApp',
+  sticker:'Чай и печенье <i>за наш счёт</i>', plate:'улица<br>Борзова', heroAlt:'Комната хостела: двухъярусные кровати со шторками',
+  quick_hand:'ответим за пару минут',
+  f_date:'Дата заезда', f_days:'Суток', f_guests:'Гостей', f_type:'Формат', send:'Забронировать в WhatsApp',
+  note:'Откроется WhatsApp с готовым сообщением. Сумма предварительная, точную цену и наличие мест подтвердит администратор. Телефон: {phone}.',
+  fact_rating:'рейтинг в 2ГИС', fact_reviews:'отзывов гостей', fact_beds:'мест в 4 комнатах', fact_checkin:'заселение',
+  amen_eye:'как дома', amen_h:'Всё для жизни уже на месте', amen_p:'Берите с собой только личные вещи.',
+  ph_eye:'загляните внутрь', ph_h:'Вот так у нас', ph_btn:'Все фото в 2ГИС',
+  pr_eye:'56 отзывов в 2ГИС', pr_h:'За что нас хвалят гости', pr_btn:'Читать отзывы в 2ГИС',
+  who_eye:'кому подойдёт', who_h:'На ночь, на вахту, на сезон', who_tag:'Чаще всего',
+  price_eye:'цены', price_h:'Чем дольше живёте, тем дешевле', price_p:'Время считается с момента заезда. Стирка и сушка по 500 ₸.', price_btn:'Узнать цену на мой срок',
+  loc_eye:'как добраться', loc_h:'Мы в Жетысуском районе', loc_addr:'ул. Борзова, 47<br>Алматы',
+  loc_p:'Двухэтажный дом. Ориентир: ТЦ Maxima. Постройте маршрут в 2ГИС, он доведёт до входа.', loc_btn:'Маршрут в 2ГИС',
+  call:'Позвонить', reviews:'Отзывы', reviews_n:'56 в 2ГИС',
+  faq_eye:'частые вопросы', faq_h:'Коротко о главном',
+  foot_addr:'Home-Hostel №1 · Алматы, ул. Борзова, 47', foot_open:'Круглосуточно',
+  from:'от {x}', bar_sub:'12 часов · сутки {pday}',
+  unit12:'12 часов', guest:['гость','гостя','гостей'], day:['сутки','суток','суток'], month:['месяц','месяца','месяцев'],
+  wa_quick:'Здравствуйте! Пишу с сайта Home-Hostel №1. Есть свободные места?',
+  wa_book:'Здравствуйте! Хочу забронировать в Home-Hostel №1.', wa_in:'Заезд', wa_term:'Срок', wa_guests:'Гостей', wa_type:'Формат', wa_later:'уточню',
+  formats:['Место на сутки','Место на 12 часов','Месяц, верхнее место','Месяц, нижнее место'],
+  tariffs:[['12 часов','Переночевать или отдохнуть днём'],['сутки','Продление в то же время на следующий день'],['месяц, верх','Верхнее место'],['месяц, низ','Нижнее место']],
+  amenities:[['Шторка у кровати','Своё закрытое место, можно выспаться.'],['Шкафчик с ключом','Личный шкаф для вещей и документов.'],['Кухня и чай','Чай, сахар и печенье бесплатно.'],['Две душевые','И туалет, в доме у входа.'],['Стирка и сушка','Стирка 500 ₸, сушка 500 ₸.'],['Wi-Fi','Бесплатный для всех гостей.'],['Чистое бельё','Свежая постель и регулярная смена.'],['Тихо ночью','Комнаты на 3, 6 и 8 мест.'],['Kaspi QR','Перевод или наличные, как удобно.'],['Камеры','Видеонаблюдение для вашей безопасности.'],['Свой двор','Есть место для курения.'],['Утюг и фен','И вентиляторы в комнатах.']],
+  photos:[['комната','Комната с тремя двухъярусными кроватями и ковром'],['кровати','Двухъярусные кровати со шторками'],['шторки','Кровати со шторками и картина на стене'],['шкафчики','Личные шкафчики с номерами и ключами']],
+  praise:[['Чистота','Самая частая похвала в отзывах: порядок в комнатах, на кухне и в душе.'],['Тишина и уют','Гости пишут, что ночью спокойно и чувствуешь себя как дома.'],['Отзывчивые админы','Вежливо встречают и быстро решают любой вопрос.']],
+  who:[['Работаете в Алматы','Гости живут у нас от двух недель до нескольких месяцев. Месяц от 50 000 ₸: дешевле аренды квартиры и без коммунальных счетов.'],['Командировка','Заселение в любое время, в том числе ночью с поезда или самолёта.'],['Бригада или компания','Комнаты на 3, 6 и 8 мест. Напишите заранее, сколько вас, и мы постараемся поселить всех вместе.'],['Проездом на пару ночей','Приехали по делам, на учёбу или к врачу. Чистая кровать, душ и кухня, без лишних трат.']],
+  faq:[['Можно заселиться ночью?','Да. Хостел работает круглосуточно, администратор встретит в любое время. Напишите заранее в WhatsApp, чтобы за вами оставили место.'],['Что нужно для заселения?','Удостоверение личности. Оплата при заселении: Kaspi QR, перевод или наличные. Предоплата по желанию.'],['Где хранить вещи?','У каждого гостя свой шкафчик с ключом.'],['Сколько стоит на неделю или месяц?','Месяц на верхнем месте стоит 50 000 ₸, на нижнем 55 000 ₸. До месяца оплата посуточно, 3 000 ₸ за сутки.'],['Как считается время?','С момента вашего заезда. Сутки заканчиваются через 24 часа в это же время, тариф на 12 часов через 12. Продление считается так же.'],['Есть ли возврат при раннем выезде?','Нет, оплата не возвращается. Берите срок, в котором уверены: продлить можно в любой момент.'],['Можно ли курить и выпивать?','Курить можно только во дворе, в отведённом месте. Гостей в состоянии опьянения не заселяем.']]
+},
+kk: {
+  title: 'Home Hostel №1 — Алматыдағы хостел, Борзов көш., 47 | 2 500 ₸-ден',
+  nav_amen:'Қолайлылық', nav_photos:'Фото', nav_prices:'Бағалар', nav_addr:'Мекенжай',
+  open:'Тәулік бойы ашық', clock:'Алматыда',
+  rating:'2ГИС-те 5.0', ratings_n:'114 баға',
+  h1:'<em>Үйдегідей</em> жайлы хостел',
+  lead:'Таза, тыныш әрі үйдегідей жайлы. Пердесі бар жеке төсек, кілтті шкаф және ас үйде ыстық шай. Орын 12 сағатқа {p12}-ден, тәулігі {pday}. Тәулік бойы қабылдаймыз.',
+  book:'Жылдам брондау', wa:'WhatsApp-қа жазу',
+  sticker:'Шай мен печенье <i>бізден</i>', plate:'Борзов<br>көшесі', heroAlt:'Хостел бөлмесі: пердесі бар екі қабатты төсектер',
+  quick_hand:'бірнеше минутта жауап береміз',
+  f_date:'Келу күні', f_days:'Тәулік саны', f_guests:'Қонақ саны', f_type:'Түрі', send:'WhatsApp арқылы брондау',
+  note:'Дайын хабарламасы бар WhatsApp ашылады. Сома алдын ала есептелген, нақты бағаны және бос орынды әкімші растайды. Телефон: {phone}.',
+  fact_rating:'2ГИС рейтингі', fact_reviews:'қонақ пікірі', fact_beds:'орын, 4 бөлмеде', fact_checkin:'қабылдау',
+  amen_eye:'үйдегідей', amen_h:'Тұруға қажеттің бәрі бар', amen_p:'Өзіңізбен тек жеке заттарыңызды алыңыз.',
+  ph_eye:'ішке үңіліңіз', ph_h:'Бізде осылай', ph_btn:'Барлық фото 2ГИС-те',
+  pr_eye:'2ГИС-те 56 пікір', pr_h:'Қонақтар бізді не үшін мақтайды', pr_btn:'Пікірлерді 2ГИС-те оқу',
+  who_eye:'кімге қолайлы', who_h:'Бір түнге, вахтаға, маусымға', who_tag:'Ең жиі',
+  price_eye:'бағалар', price_h:'Неғұрлым ұзақ тұрсаңыз, соғұрлым арзан', price_p:'Уақыт келген сәттен бастап есептеледі. Кір жуу мен кептіру 500 ₸-ден.', price_btn:'Өз мерзіміме бағаны білу',
+  loc_eye:'қалай жетуге болады', loc_h:'Біз Жетісу ауданындамыз', loc_addr:'Борзов көш., 47<br>Алматы',
+  loc_p:'Екі қабатты үй. Бағдар: Maxima сауда орталығы. 2ГИС-те маршрут құрыңыз, ол кіреберіске дейін жеткізеді.', loc_btn:'2ГИС-те маршрут',
+  call:'Қоңырау шалу', reviews:'Пікірлер', reviews_n:'2ГИС-те 56',
+  faq_eye:'жиі қойылатын сұрақтар', faq_h:'Ең маңыздысы қысқаша',
+  foot_addr:'Home-Hostel №1 · Алматы, Борзов көш., 47', foot_open:'Тәулік бойы',
+  from:'{x}-ден', bar_sub:'12 сағат · тәулігі {pday}',
+  unit12:'12 сағат', guest:['қонақ','қонақ','қонақ'], day:['тәулік','тәулік','тәулік'], month:['ай','ай','ай'],
+  wa_quick:'Сәлеметсіз бе! Home-Hostel №1 сайтынан жазып тұрмын. Бос орын бар ма?',
+  wa_book:'Сәлеметсіз бе! Home-Hostel №1-де орын брондағым келеді.', wa_in:'Келу күні', wa_term:'Мерзімі', wa_guests:'Қонақ саны', wa_type:'Түрі', wa_later:'кейін нақтылаймын',
+  formats:['Тәулікке орын','12 сағатқа орын','Бір ай, жоғарғы орын','Бір ай, төменгі орын'],
+  tariffs:[['12 сағат','Түнеу немесе күндіз демалу'],['тәулік','Ұзарту келесі күні дәл сол уақытта'],['ай, жоғарғы','Жоғарғы орын'],['ай, төменгі','Төменгі орын']],
+  amenities:[['Төсектегі перде','Жеке жабық орын, тыныш ұйықтауға болады.'],['Кілтті шкаф','Заттар мен құжаттарға арналған жеке шкаф.'],['Ас үй және шай','Шай, қант және печенье тегін.'],['Екі душ','Әжетхана да үй ішінде, кіреберістің жанында.'],['Кір жуу және кептіру','Кір жуу 500 ₸, кептіру 500 ₸.'],['Wi-Fi','Барлық қонаққа тегін.'],['Таза төсек-орын','Таза жайма, үнемі ауыстырылады.'],['Түнде тыныш','3, 6 және 8 орындық бөлмелер.'],['Kaspi QR','Аударым немесе қолма-қол ақша, қалауыңызша.'],['Камералар','Қауіпсіздігіңіз үшін бейнебақылау.'],['Өз ауласы','Темекі шегетін орын бар.'],['Үтік пен фен','Бөлмелерде желдеткіш те бар.']],
+  photos:[['бөлме','Үш екі қабатты төсегі мен кілемі бар бөлме'],['төсектер','Пердесі бар екі қабатты төсектер'],['перделер','Пердесі бар төсектер және қабырғадағы сурет'],['шкафтар','Нөмірі мен кілті бар жеке шкафтар']],
+  praise:[['Тазалық','Пікірлерде ең жиі айтылатыны: бөлмелерде, ас үйде және душта тәртіп.'],['Тыныштық пен жайлылық','Қонақтар түнде тыныш екенін және өзін үйдегідей сезінетінін жазады.'],['Ілтипатты әкімшілер','Сыпайы қарсы алады және кез келген мәселені тез шешеді.']],
+  who:[['Алматыда жұмыс істейсіз бе','Қонақтар бізде екі аптадан бірнеше айға дейін тұрады. Айына 50 000 ₸-ден: пәтер жалдаудан арзан әрі коммуналдық төлемсіз.'],['Іссапар','Кез келген уақытта, соның ішінде түнде пойыздан немесе ұшақтан кейін де қабылдаймыз.'],['Бригада немесе топ','3, 6 және 8 орындық бөлмелер. Қанша адам екеніңізді алдын ала жазыңыз, бәріңізді бірге орналастыруға тырысамыз.'],['Бір-екі түнге жолай','Жұмыспен, оқуға немесе дәрігерге келдіңіз бе. Таза төсек, душ және ас үй, артық шығынсыз.']],
+  faq:[['Түнде орналасуға бола ма?','Иә. Хостел тәулік бойы жұмыс істейді, әкімші кез келген уақытта қарсы алады. Орын сақталуы үшін WhatsApp-қа алдын ала жазыңыз.'],['Орналасу үшін не қажет?','Жеке куәлік. Төлем орналасқан кезде: Kaspi QR, аударым немесе қолма-қол ақша. Алдын ала төлем қалауыңыз бойынша.'],['Заттарды қайда сақтауға болады?','Әр қонақтың кілті бар жеке шкафы бар.'],['Бір аптаға немесе айға қанша тұрады?','Жоғарғы орында бір ай 50 000 ₸, төменгі орында 55 000 ₸. Бір айға дейін төлем тәулік бойынша, тәулігіне 3 000 ₸.'],['Уақыт қалай есептеледі?','Сіз келген сәттен бастап. Тәулік 24 сағаттан кейін дәл сол уақытта аяқталады, 12 сағаттық тариф 12 сағаттан кейін. Ұзарту да солай есептеледі.'],['Ерте кеткенде ақша қайтарыла ма?','Жоқ, төлем қайтарылмайды. Сенімді мерзіміңізді таңдаңыз: кез келген уақытта ұзартуға болады.'],['Темекі шегуге және ішімдік ішуге бола ма?','Темекіні тек аулада, арнайы орында шегуге болады. Мас күйдегі қонақтарды қабылдамаймыз.']]
+},
+en: {
+  title: 'Home Hostel №1 — hostel in Almaty, 47 Borzov St | from 2 500 ₸',
+  nav_amen:'Amenities', nav_photos:'Photos', nav_prices:'Prices', nav_addr:'Address',
+  open:'Open 24/7', clock:'Almaty time',
+  rating:'5.0 on 2GIS', ratings_n:'114 ratings',
+  h1:'A hostel that feels <em>like home</em>',
+  lead:'Clean, quiet and homely. Your own bed with a curtain, a locker with a key and hot tea in the kitchen. Beds from {p12} for 12 hours, {pday} per day. Check-in around the clock.',
+  book:'Quick booking', wa:'Message on WhatsApp',
+  sticker:'Tea and cookies <i>on us</i>', plate:'Borzov<br>street', heroAlt:'Hostel room: bunk beds with curtains',
+  quick_hand:'we reply within minutes',
+  f_date:'Check-in date', f_days:'Days', f_guests:'Guests', f_type:'Option', send:'Book via WhatsApp',
+  note:'WhatsApp will open with a ready message. The total is an estimate; the administrator will confirm the exact price and availability. Phone: {phone}.',
+  fact_rating:'rating on 2GIS', fact_reviews:'guest reviews', fact_beds:'beds in 4 rooms', fact_checkin:'check-in',
+  amen_eye:'like home', amen_h:'Everything you need is already here', amen_p:'Just bring your personal belongings.',
+  ph_eye:'take a look inside', ph_h:'This is our place', ph_btn:'All photos on 2GIS',
+  pr_eye:'56 reviews on 2GIS', pr_h:'What guests praise us for', pr_btn:'Read reviews on 2GIS',
+  who_eye:'who it suits', who_h:'For a night, a work shift, a season', who_tag:'Most often',
+  price_eye:'prices', price_h:'The longer you stay, the cheaper', price_p:'Time is counted from the moment of check-in. Washing and drying are 500 ₸ each.', price_btn:'Get a price for my stay',
+  loc_eye:'how to get here', loc_h:'We are in Zhetysu district', loc_addr:'47 Borzov St<br>Almaty',
+  loc_p:'A two-storey house. Landmark: Maxima shopping centre. Build a route in 2GIS and it will take you to the entrance.', loc_btn:'Route in 2GIS',
+  call:'Call', reviews:'Reviews', reviews_n:'56 on 2GIS',
+  faq_eye:'FAQ', faq_h:'The essentials in brief',
+  foot_addr:'Home-Hostel №1 · 47 Borzov St, Almaty', foot_open:'Open 24/7',
+  from:'from {x}', bar_sub:'12 hours · {pday} per day',
+  unit12:'12 hours', guest:['guest','guests','guests'], day:['day','days','days'], month:['month','months','months'],
+  wa_quick:'Hello! I am writing from the Home-Hostel №1 website. Do you have free beds?',
+  wa_book:'Hello! I would like to book at Home-Hostel №1.', wa_in:'Check-in', wa_term:'Stay', wa_guests:'Guests', wa_type:'Option', wa_later:'to be confirmed',
+  formats:['Bed for a day','Bed for 12 hours','Month, upper bunk','Month, lower bunk'],
+  tariffs:[['12 hours','Stay the night or rest during the day'],['a day','Extend at the same time the next day'],['month, upper','Upper bunk'],['month, lower','Lower bunk']],
+  amenities:[['Bed curtain','Your own private space for a good sleep.'],['Locker with a key','A personal locker for belongings and documents.'],['Kitchen and tea','Free tea, sugar and cookies.'],['Two showers','And a toilet, indoors by the entrance.'],['Laundry','Washing 500 ₸, drying 500 ₸.'],['Wi-Fi','Free for all guests.'],['Clean linen','Fresh bedding, changed regularly.'],['Quiet at night','Rooms for 3, 6 and 8 guests.'],['Kaspi QR','Bank transfer or cash, whichever suits you.'],['Cameras','Video surveillance for your safety.'],['Own yard','With a smoking area.'],['Iron and hairdryer','Plus fans in the rooms.']],
+  photos:[['room','A room with three bunk beds and a carpet'],['beds','Bunk beds with curtains'],['curtains','Beds with curtains and a painting on the wall'],['lockers','Personal lockers with numbers and keys']],
+  praise:[['Cleanliness','The most common praise in reviews: tidy rooms, kitchen and showers.'],['Peace and comfort','Guests write that nights are calm and it feels like home.'],['Helpful staff','A polite welcome and any issue solved quickly.']],
+  who:[['Working in Almaty','Guests stay with us from two weeks to several months. A month from 50 000 ₸: cheaper than renting a flat, with no utility bills.'],['Business trip','Check in at any time, including at night straight from a train or plane.'],['A crew or a group','Rooms for 3, 6 and 8. Tell us in advance how many you are and we will try to put you all together.'],['Passing through for a couple of nights','Here on business, for studies or to see a doctor. A clean bed, shower and kitchen at no extra cost.']],
+  faq:[['Can I check in at night?','Yes. The hostel is open around the clock and the administrator will meet you at any time. Message us on WhatsApp in advance so a bed is held for you.'],['What do I need to check in?','An identity document. Payment on arrival: Kaspi QR, bank transfer or cash. Prepayment is optional.'],['Where can I keep my things?','Every guest has a personal locker with a key.'],['How much is a week or a month?','A month on an upper bunk is 50 000 ₸, on a lower bunk 55 000 ₸. Stays shorter than a month are paid per day, 3 000 ₸.'],['How is time counted?','From the moment you arrive. A day ends 24 hours later at the same time, the 12-hour rate after 12 hours. Extensions are counted the same way.'],['Is there a refund if I leave early?','No, payments are not refunded. Book the period you are sure about: you can extend at any time.'],['Can I smoke or drink?','Smoking is allowed only in the yard, in the designated area. We do not check in guests who are intoxicated.']]
+}
 };
 /* ============================ конец данных ============================== */
 
 (function(){
-  var H=HOSTEL, $=function(id){return document.getElementById(id)};
+  var H=HOSTEL, T=I18N.ru, lang='ru', LS='hh1-lang', $=function(id){return document.getElementById(id)};
   var ICONS={
     cam:'<rect x="3" y="7" width="13" height="10" rx="2"/><path d="M16 10.5l5-3v9l-5-3z"/>',
     yard:'<path d="M12 21v-8M12 13a5 5 0 1 1 0-10 5 5 0 0 1 0 10zM5 21h14"/>',
@@ -512,49 +586,66 @@ var HOSTEL = {
   };
   function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
   function wa(text){return 'https://wa.me/'+H.phone+'?text='+encodeURIComponent(text)}
-  function plural(n,a,b,c){var m=n%100,k=n%10;return (m>10&&m<20)?c:(k===1?a:(k>=2&&k<=4?b:c))}
+  function plural(n,f){if(lang!=='ru')return n===1?f[0]:f[1];var m=n%100,k=n%10;return (m>10&&m<20)?f[2]:(k===1?f[0]:(k>=2&&k<=4?f[1]:f[2]))}
   function money(n){return String(n).replace(/\B(?=(\d{3})+(?!\d))/g,' ')+' ₸'}
   function all(sel,fn){document.querySelectorAll(sel).forEach(fn)}
+  function fill(s,o){return s.replace(/\{(\w+)\}/g,function(m,k){return o[k]})}
 
-  // блоки из данных
-  $('amenList').innerHTML=H.amenities.map(function(a){return '<li><span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true">'+(ICONS[a.icon]||ICONS.bed)+'</svg></span><h3>'+esc(a.title)+'</h3><p>'+esc(a.text)+'</p></li>'}).join('');
-  $('shotList').innerHTML=H.photos.map(function(p){return '<figure><img loading="lazy" src="'+esc(p.file)+'" alt="'+esc(p.alt)+'"><figcaption>'+esc(p.caption)+'</figcaption></figure>'}).join('');
-  $('praiseList').innerHTML=H.praise.map(function(p){return '<li><b>'+esc(p.title)+'</b><p>'+esc(p.text)+'</p></li>'}).join('');
-  $('tariffList').innerHTML=H.tariffs.map(function(t){return '<li><span>'+esc(t.name)+'</span><b>'+esc(t.price)+'</b><p>'+esc(t.note)+'</p></li>'}).join('');
-  $('faqList').innerHTML=H.faq.map(function(f,i){return '<details'+(i===0?' open':'')+'><summary>'+esc(f.q)+'</summary><p>'+esc(f.a)+'</p></details>'}).join('');
-  $('fType').innerHTML=H.formats.map(function(f){return '<option>'+esc(f.name)+'</option>'}).join('');
+  function tick(){try{$('openText').textContent=T.open+' · '+T.clock+' '+new Intl.DateTimeFormat('ru-RU',{timeZone:'Asia/Almaty',hour:'2-digit',minute:'2-digit'}).format(new Date())}catch(e){$('openText').textContent=T.open}}
 
-  // контакты и цена
-  var quick=wa('Здравствуйте! Пишу с сайта Home-Hostel №1. Есть свободные места?');
-  all('[data-wa]',function(a){a.href=quick});
+  function clamp(v,min,max){v=parseInt(v,10);if(isNaN(v)||v<min)return min;return v>max?max:v}
+  function update(){
+    var n=clamp($('fNights').value,1,365), g=clamp($('fGuests').value,1,25), i=Math.max(0,$('fType').selectedIndex), f=H.formats[i]||H.formats[0], sum, unit, m;
+    if(f.kind==='half'){sum=f.price*g;unit=T.unit12}
+    else if(f.kind==='month'){m=Math.ceil(n/30);sum=f.price*m*g;unit=m+' '+plural(m,T.month)}
+    else{sum=f.price*n*g;unit=n+' '+plural(n,T.day)}
+    var date=$('fDate').value? $('fDate').value.split('-').reverse().join('.') : T.wa_later;
+    $('sumText').textContent=g+' '+plural(g,T.guest)+' · '+unit;
+    $('sumPrice').textContent=money(sum);
+    $('sendBtn').href=wa([T.wa_book,T.wa_in+': '+date,T.wa_term+': '+unit,T.wa_guests+': '+g,T.wa_type+': '+T.formats[i]].join('\n'));
+  }
+
+  function apply(l){
+    lang=I18N[l]?l:'ru'; T=I18N[lang];
+    document.documentElement.lang=lang; document.title=T.title;
+    all('[data-lang]',function(b){b.setAttribute('aria-pressed',b.getAttribute('data-lang')===lang?'true':'false')});
+    all('[data-i18n]',function(e){e.textContent=T[e.getAttribute('data-i18n')]});
+    all('[data-i18n-html]',function(e){e.innerHTML=T[e.getAttribute('data-i18n-html')]});
+    var vals={p12:money(H.price12),pday:money(H.priceDay),phone:H.phoneText};
+    $('lead').textContent=fill(T.lead,vals); $('note').textContent=fill(T.note,vals);
+    $('barFrom').textContent=fill(T.from,{x:money(H.price12)}); $('barSub').textContent=fill(T.bar_sub,vals);
+    $('heroImg').alt=T.heroAlt;
+    $('amenList').innerHTML=T.amenities.map(function(a,i){return '<li><span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true">'+(ICONS[H.amenIcons[i]]||ICONS.bed)+'</svg></span><h3>'+esc(a[0])+'</h3><p>'+esc(a[1])+'</p></li>'}).join('');
+    $('shotList').innerHTML=H.photos.map(function(p,i){return '<figure><img loading="lazy" src="'+esc(p)+'" alt="'+esc(T.photos[i][1])+'"><figcaption>'+esc(T.photos[i][0])+'</figcaption></figure>'}).join('');
+    $('praiseList').innerHTML=T.praise.map(function(p){return '<li><b>'+esc(p[0])+'</b><p>'+esc(p[1])+'</p></li>'}).join('');
+    $('whoList').innerHTML=T.who.map(function(w,i){return '<article>'+(i===0?'<span class="tag">'+esc(T.who_tag)+'</span>':'')+'<h3>'+esc(w[0])+'</h3><p>'+esc(w[1])+'</p></article>'}).join('');
+    $('tariffList').innerHTML=T.tariffs.map(function(t,i){return '<li><span>'+esc(t[0])+'</span><b>'+money(H.tariffPrices[i])+'</b><p>'+esc(t[1])+'</p></li>'}).join('');
+    $('faqList').innerHTML=T.faq.map(function(f,i){return '<details'+(i===0?' open':'')+'><summary>'+esc(f[0])+'</summary><p>'+esc(f[1])+'</p></details>'}).join('');
+    var sel=Math.max(0,$('fType').selectedIndex);
+    $('fType').innerHTML=T.formats.map(function(f){return '<option>'+esc(f)+'</option>'}).join(''); $('fType').selectedIndex=sel;
+    var quick=wa(T.wa_quick);
+    all('[data-wa]',function(a){a.href=quick});
+    tick(); update();
+  }
+
+  // контакты
   all('[data-phone]',function(e){e.textContent=H.phoneText});
   all('[data-tel]',function(a){a.href='tel:+'+H.phone});
   all('[data-ig]',function(a){a.href='https://instagram.com/'+H.instagram});
   all('[data-ig-name]',function(e){e.textContent='@'+H.instagram});
-  all('[data-price-from]',function(e){e.textContent='от '+money(H.priceFrom)});
-  all('[data-price-from-night]',function(e){e.textContent='от '+money(H.priceFrom)});
 
-  // часы Алматы
-  function tick(){try{$('clock').textContent='в Алматы '+new Intl.DateTimeFormat('ru-RU',{timeZone:'Asia/Almaty',hour:'2-digit',minute:'2-digit'}).format(new Date())}catch(e){}}
-  tick(); setInterval(tick,30000);
-
-  // быстрая бронь
+  // форма
   var d=new Date(), iso=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
   $('fDate').min=iso; $('fDate').value=iso;
-  function clamp(v,min,max){v=parseInt(v,10);if(isNaN(v)||v<min)return min;return v>max?max:v}
-  function update(){
-    var n=clamp($('fNights').value,1,365), g=clamp($('fGuests').value,1,25), f=H.formats[$('fType').selectedIndex]||H.formats[0], sum, unit, m;
-    if(f.kind==='half'){sum=f.price*g;unit='12 часов'}
-    else if(f.kind==='month'){m=Math.ceil(n/30);sum=f.price*m*g;unit=m+' '+plural(m,'месяц','месяца','месяцев')}
-    else{sum=f.price*n*g;unit=n+' '+plural(n,'сутки','суток','суток')}
-    var date=$('fDate').value? $('fDate').value.split('-').reverse().join('.') : 'уточню';
-    $('sumText').textContent=g+' '+plural(g,'гость','гостя','гостей')+' · '+unit;
-    $('sumPrice').textContent=money(sum);
-    $('sendBtn').href=wa(['Здравствуйте! Хочу забронировать в Home-Hostel №1.','Заезд: '+date,'Срок: '+unit,'Гостей: '+g,'Формат: '+f.name].join('\n'));
-  }
   ['fDate','fNights','fGuests','fType'].forEach(function(id){$(id).addEventListener('input',update);$(id).addEventListener('change',update)});
   $('bookForm').addEventListener('submit',function(e){e.preventDefault()});
-  update();
+
+  // язык: сохранённый выбор; если телефон на казахском, казахский; иначе русский
+  var start='ru';
+  try{var saved=localStorage.getItem(LS);if(saved&&I18N[saved])start=saved;else if((navigator.language||'').slice(0,2).toLowerCase()==='kk')start='kk'}catch(e){}
+  all('[data-lang]',function(b){b.addEventListener('click',function(){var l=b.getAttribute('data-lang');apply(l);try{localStorage.setItem(LS,l)}catch(e){}})});
+  apply(start);
+  setInterval(tick,30000);
 })();
 </script>
 </body>
