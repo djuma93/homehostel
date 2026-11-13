@@ -119,6 +119,24 @@ input:focus,select:focus{outline:none;border-color:var(--green)}
 .sum{font-size:15px;color:var(--muted)}
 .sum b{display:block;font-family:var(--display);font-weight:400;font-size:28px;line-height:1.1;color:var(--ink);font-variant-numeric:tabular-nums}
 .note{grid-column:1/-1;font-size:13.5px;color:var(--muted)}
+form[hidden]{display:none}
+.f.w2{grid-column:span 2}
+.hp{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
+.free{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 16px;padding:12px 16px;border-radius:18px;background:var(--green);color:#fff;font-size:15px}
+.free[hidden]{display:none}
+.free b{font-family:var(--display);font-weight:400;font-size:22px;line-height:1.1;color:var(--sun)}
+.free .dot{background:#9be7b7;flex:none}
+.free.none{background:var(--muted)}
+.free.none b{color:#fff}
+.quick-btns{display:flex;flex-direction:column;align-items:stretch;gap:8px}
+.alt{font-size:14px;font-weight:600;color:var(--green);text-align:center}
+.err{grid-column:1/-1;font-size:14px;font-weight:600;color:var(--tomato)}
+.err:empty{display:none}
+.done{border:1.5px solid var(--green);background:#eef6ef;border-radius:22px;padding:clamp(16px,3vw,24px)}
+.done[hidden]{display:none}
+.done h3{font-family:var(--display);font-weight:400;font-size:24px;color:var(--green);margin-bottom:8px}
+.done p{margin-bottom:6px}
+.done .btn{margin-top:10px}
 
 .facts{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:clamp(36px,6vw,60px)}
 .facts div{padding:18px 18px 20px;display:flex;flex-direction:column;gap:2px;border-radius:var(--r)}
@@ -309,17 +327,33 @@ footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
 
   <div class="quick" id="book">
     <div class="quick-head"><h2 data-i18n="book"></h2><span class="hand" data-i18n="quick_hand"></span></div>
+    <p class="free" id="freeBox" hidden aria-live="polite"><span class="dot" aria-hidden="true"></span><b id="freeText"></b><span id="freeSub"></span></p>
     <form id="bookForm" novalidate>
       <div class="f"><label for="fDate" data-i18n="f_date"></label><input id="fDate" type="date"></div>
       <div class="f"><label for="fNights" data-i18n="f_days"></label><input id="fNights" type="number" min="1" max="365" value="1" inputmode="numeric"></div>
       <div class="f"><label for="fGuests" data-i18n="f_guests"></label><input id="fGuests" type="number" min="1" max="25" value="1" inputmode="numeric"></div>
       <div class="f"><label for="fType" data-i18n="f_type"></label><select id="fType"></select></div>
+      <div class="f"><label for="fTime" data-i18n="f_time"></label><input id="fTime" type="time"></div>
+      <div class="f"><label for="fName" data-i18n="f_name"></label><input id="fName" type="text" maxlength="60" autocomplete="given-name"></div>
+      <div class="f w2"><label for="fPhone" data-i18n="f_phone"></label><input id="fPhone" type="tel" maxlength="20" inputmode="tel" autocomplete="tel" placeholder="+7 7__ ___ __ __"></div>
+      <input class="hp" id="fHp" type="text" tabindex="-1" autocomplete="off" aria-hidden="true">
+      <p class="err" id="bookErr" role="alert"></p>
       <div class="quick-foot">
         <div class="sum"><span id="sumText"></span><b id="sumPrice"></b></div>
-        <a class="btn btn-main" id="sendBtn" href="https://wa.me/77088134595" target="_blank" rel="noopener" data-i18n="send"></a>
+        <div class="quick-btns">
+          <button class="btn btn-main" id="bookBtn" type="submit" data-i18n="send"></button>
+          <a class="alt" id="sendBtn" href="https://wa.me/77088134595" target="_blank" rel="noopener" data-i18n="or_wa"></a>
+        </div>
       </div>
       <p class="note" id="note"></p>
     </form>
+    <div class="done" id="bookDone" hidden>
+      <h3 data-i18n="ok_h"></h3>
+      <p id="okP1"></p>
+      <p id="okP2"></p>
+      <p data-i18n="ok_addr"></p>
+      <a class="btn btn-ghost" id="okWa" href="https://wa.me/77088134595" target="_blank" rel="noopener" data-i18n="wa"></a>
+    </div>
   </div>
 
   <div class="facts">
@@ -470,8 +504,13 @@ ru: {
   book:'Быстрая бронь', wa:'Написать в WhatsApp',
   sticker:'Чай и печенье <i>за наш счёт</i>', plate:'улица<br>Борзова', heroAlt:'Комната хостела: двухъярусные кровати со шторками',
   quick_hand:'ответим за пару минут',
-  f_date:'Дата заезда', f_days:'Суток', f_guests:'Гостей', f_type:'Формат', send:'Забронировать в WhatsApp',
-  note:'Откроется WhatsApp с готовым сообщением. Сумма предварительная, точную цену и наличие мест подтвердит администратор. Телефон: {phone}.',
+  f_date:'Дата заезда', f_days:'Суток', f_guests:'Гостей', f_type:'Формат', send:'Забронировать',
+  f_time:'Во сколько придёте', f_name:'Ваше имя', f_phone:'Телефон (WhatsApp)', or_wa:'или написать в WhatsApp',
+  err_fields:'Укажите имя и номер телефона, чтобы мы подтвердили бронь.', sending:'Отправляем…',
+  ok_h:'Заявка принята', ok_p1:'{name}, ждём вас {date} к {time}.', ok_p2:'Место держим до {hold}. Администратор подтвердит бронь в WhatsApp.', ok_addr:'Адрес: ул. Борзова, 47. При заселении нужно удостоверение личности.',
+  wa_name:'Имя', wa_time:'Время',
+  free_many:'Места есть', free_many_sub:'заселим сегодня', free_few:['Свободно {n} место','Свободно {n} места','Свободно {n} мест'], free_few_sub:'успейте забронировать', free_none:'Сейчас мест нет', free_none_sub:'напишите, подскажем, когда освободится',
+  note:'Без предоплаты: место держим 2 часа после названного времени. Сумма предварительная, оплата на месте. Телефон: {phone}.',
   fact_rating:'рейтинг в 2ГИС', fact_reviews:'отзывов гостей', fact_beds:'мест в 4 комнатах', fact_checkin:'заселение',
   amen_eye:'как дома', amen_h:'Всё для жизни уже на месте', amen_p:'Берите с собой только личные вещи.',
   ph_eye:'загляните внутрь', ph_h:'Вот так у нас', ph_btn:'Все фото в 2ГИС',
@@ -505,8 +544,13 @@ kk: {
   book:'Жылдам брондау', wa:'WhatsApp-қа жазу',
   sticker:'Шай мен печенье <i>бізден</i>', plate:'Борзов<br>көшесі', heroAlt:'Хостел бөлмесі: пердесі бар екі қабатты төсектер',
   quick_hand:'бірнеше минутта жауап береміз',
-  f_date:'Келу күні', f_days:'Тәулік саны', f_guests:'Қонақ саны', f_type:'Түрі', send:'WhatsApp арқылы брондау',
-  note:'Дайын хабарламасы бар WhatsApp ашылады. Сома алдын ала есептелген, нақты бағаны және бос орынды әкімші растайды. Телефон: {phone}.',
+  f_date:'Келу күні', f_days:'Тәулік саны', f_guests:'Қонақ саны', f_type:'Түрі', send:'Брондау',
+  f_time:'Сағат нешеде келесіз', f_name:'Атыңыз', f_phone:'Телефон (WhatsApp)', or_wa:'немесе WhatsApp-қа жазу',
+  err_fields:'Брондауды растау үшін атыңызды және телефон нөміріңізді жазыңыз.', sending:'Жіберілуде…',
+  ok_h:'Өтінім қабылданды', ok_p1:'{name}, сізді {date} күні сағат {time}-де күтеміз.', ok_p2:'Орынды {hold} дейін сақтаймыз. Әкімші брондауды WhatsApp арқылы растайды.', ok_addr:'Мекенжай: Борзов көшесі, 47. Қоныстану кезінде жеке куәлік қажет.',
+  wa_name:'Аты', wa_time:'Уақыты',
+  free_many:'Бос орын бар', free_many_sub:'бүгін қоныстандырамыз', free_few:['{n} бос орын қалды','{n} бос орын қалды'], free_few_sub:'брондап үлгеріңіз', free_none:'Қазір бос орын жоқ', free_none_sub:'жазыңыз, қашан босайтынын айтамыз',
+  note:'Алдын ала төлемсіз: орынды айтылған уақыттан кейін 2 сағат сақтаймыз. Сома алдын ала есептелген, төлем орнында. Телефон: {phone}.',
   fact_rating:'2ГИС рейтингі', fact_reviews:'қонақ пікірі', fact_beds:'орын, 4 бөлмеде', fact_checkin:'қабылдау',
   amen_eye:'үйдегідей', amen_h:'Тұруға қажеттің бәрі бар', amen_p:'Өзіңізбен тек жеке заттарыңызды алыңыз.',
   ph_eye:'ішке үңіліңіз', ph_h:'Бізде осылай', ph_btn:'Барлық фото 2ГИС-те',
@@ -540,8 +584,13 @@ en: {
   book:'Quick booking', wa:'Message on WhatsApp',
   sticker:'Tea and cookies <i>on us</i>', plate:'Borzov<br>street', heroAlt:'Hostel room: bunk beds with curtains',
   quick_hand:'we reply within minutes',
-  f_date:'Check-in date', f_days:'Days', f_guests:'Guests', f_type:'Option', send:'Book via WhatsApp',
-  note:'WhatsApp will open with a ready message. The total is an estimate; the administrator will confirm the exact price and availability. Phone: {phone}.',
+  f_date:'Check-in date', f_days:'Days', f_guests:'Guests', f_type:'Option', send:'Book a bed',
+  f_time:'Arrival time', f_name:'Your name', f_phone:'Phone (WhatsApp)', or_wa:'or message us on WhatsApp',
+  err_fields:'Please enter your name and phone number so we can confirm the booking.', sending:'Sending…',
+  ok_h:'Request received', ok_p1:'{name}, we expect you on {date} at {time}.', ok_p2:'We hold the bed until {hold}. The administrator will confirm on WhatsApp.', ok_addr:'Address: 47 Borzov St. An ID is required at check-in.',
+  wa_name:'Name', wa_time:'Time',
+  free_many:'Beds available', free_many_sub:'check in today', free_few:['{n} bed left','{n} beds left'], free_few_sub:'book now', free_none:'No free beds right now', free_none_sub:'message us and we will tell you when one frees up',
+  note:'No prepayment: we hold the bed for 2 hours after your arrival time. The total is an estimate, you pay on site. Phone: {phone}.',
   fact_rating:'rating on 2GIS', fact_reviews:'guest reviews', fact_beds:'beds in 4 rooms', fact_checkin:'check-in',
   amen_eye:'like home', amen_h:'Everything you need is already here', amen_p:'Just bring your personal belongings.',
   ph_eye:'take a look inside', ph_h:'This is our place', ph_btn:'All photos on 2GIS',
@@ -570,6 +619,9 @@ en: {
 
 (function(){
   var H=HOSTEL, T=I18N.ru, lang='ru', LS='hh1-lang', $=function(id){return document.getElementById(id)};
+  // сервер учёта: свободные места и приём заявок
+  var API='https://script.google.com/macros/s/AKfycby0zVTmjiOZCZiAXw8N7JB3kJVojajfeFDJ6aGu3Co_zN1398blgIFLfMLB9McqTz3JmQ/exec';
+  var FREE_EXACT_BELOW=10, freeNow=null, booked=null;
   var ICONS={
     cam:'<rect x="3" y="7" width="13" height="10" rx="2"/><path d="M16 10.5l5-3v9l-5-3z"/>',
     yard:'<path d="M12 21v-8M12 13a5 5 0 1 1 0-10 5 5 0 0 1 0 10zM5 21h14"/>',
@@ -602,7 +654,48 @@ en: {
     var date=$('fDate').value? $('fDate').value.split('-').reverse().join('.') : T.wa_later;
     $('sumText').textContent=g+' '+plural(g,T.guest)+' · '+unit;
     $('sumPrice').textContent=money(sum);
-    $('sendBtn').href=wa([T.wa_book,T.wa_in+': '+date,T.wa_term+': '+unit,T.wa_guests+': '+g,T.wa_type+': '+T.formats[i]].join('\n'));
+    var lines=[T.wa_book,T.wa_in+': '+date+($('fTime').value?', '+$('fTime').value:''),T.wa_term+': '+unit,T.wa_guests+': '+g,T.wa_type+': '+T.formats[i]];
+    if($('fName').value.trim())lines.push(T.wa_name+': '+$('fName').value.trim());
+    $('sendBtn').href=wa(lines.join('\n'));
+    return {n:n,g:g,i:i,f:f,date:date};
+  }
+
+  // табло: точное число показываем, только когда мест осталось мало
+  function showFree(){
+    var box=$('freeBox'); if(freeNow===null){box.hidden=true;return}
+    box.hidden=false; box.className='free'+(freeNow<=0?' none':'');
+    if(freeNow<=0){$('freeText').textContent=T.free_none;$('freeSub').textContent=T.free_none_sub}
+    else if(freeNow>=FREE_EXACT_BELOW){$('freeText').textContent=T.free_many;$('freeSub').textContent=T.free_many_sub}
+    else{$('freeText').textContent=fill(plural(freeNow,T.free_few),{n:freeNow});$('freeSub').textContent=T.free_few_sub}
+  }
+  function loadFree(){
+    fetch(API+'?free=1').then(function(r){return r.json()}).then(function(j){
+      freeNow=j&&j.ok&&typeof j.free==='number'?j.free:null; showFree();
+    }).catch(function(){freeNow=null;showFree()});
+  }
+
+  function showDone(){
+    if(!booked)return;
+    $('okP1').textContent=fill(T.ok_p1,booked); $('okP2').textContent=fill(T.ok_p2,booked);
+    $('okWa').href=$('sendBtn').href;
+    $('bookForm').hidden=true; $('bookDone').hidden=false;
+  }
+  function submitBook(){
+    var u=update(), name=$('fName').value.replace(/\s+/g,' ').trim(), phone=$('fPhone').value.trim(), err=$('bookErr'), btn=$('bookBtn');
+    if(name.length<2||phone.replace(/\D/g,'').length<10){err.textContent=T.err_fields;(name.length<2?$('fName'):$('fPhone')).focus();return}
+    err.textContent='';
+    var time=$('fTime').value||'12:00', when=Date.parse(($('fDate').value||iso)+'T'+time+':00+05:00');
+    var term=I18N.ru.formats[u.i]+(u.f.kind==='half'?'':' × '+(u.f.kind==='month'?Math.ceil(u.n/30):u.n));
+    var body={book:{name:name,phone:phone,when:when||Date.now(),term:term,pref:u.i===2?'верхнее':(u.i===3?'нижнее':'любое'),
+      note:'Гостей: '+u.g+(lang!=='ru'?', язык: '+lang:''),src:'Сайт',hp:$('fHp').value}};
+    var toWa=function(){window.location.href=$('sendBtn').href};   // запасной путь: готовое сообщение в WhatsApp
+    btn.disabled=true; btn.textContent=T.sending;
+    fetch(API,{method:'POST',body:JSON.stringify(body)}).then(function(r){return r.json()}).then(function(res){
+      btn.disabled=false; btn.textContent=T.send;
+      if(res&&res.ok){booked={name:name,date:u.date,time:time,hold:res.hold||''};showDone();return}
+      if(res&&res.error&&res.auth!==false){err.textContent=res.error;return}
+      toWa();
+    }).catch(function(){btn.disabled=false;btn.textContent=T.send;toWa()});
   }
 
   function apply(l){
@@ -625,7 +718,7 @@ en: {
     $('fType').innerHTML=T.formats.map(function(f){return '<option>'+esc(f)+'</option>'}).join(''); $('fType').selectedIndex=sel;
     var quick=wa(T.wa_quick);
     all('[data-wa]',function(a){a.href=quick});
-    tick(); update();
+    tick(); update(); showFree(); showDone();
   }
 
   // контакты
@@ -637,8 +730,11 @@ en: {
   // форма
   var d=new Date(), iso=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
   $('fDate').min=iso; $('fDate').value=iso;
-  ['fDate','fNights','fGuests','fType'].forEach(function(id){$(id).addEventListener('input',update);$(id).addEventListener('change',update)});
-  $('bookForm').addEventListener('submit',function(e){e.preventDefault()});
+  var soon=new Date(d.getTime()+3600000); soon.setMinutes(soon.getMinutes()<30?30:60,0,0);
+  $('fTime').value=soon.getDate()===d.getDate()?String(soon.getHours()).padStart(2,'0')+':'+String(soon.getMinutes()).padStart(2,'0'):'23:30';
+  ['fDate','fTime','fNights','fGuests','fType','fName'].forEach(function(id){$(id).addEventListener('input',update);$(id).addEventListener('change',update)});
+  $('bookForm').addEventListener('submit',function(e){e.preventDefault();submitBook()});
+  loadFree(); setInterval(loadFree,60000);
 
   // язык: сохранённый выбор; если телефон на казахском, казахский; иначе русский
   var start='ru';
