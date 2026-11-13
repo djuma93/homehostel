@@ -186,7 +186,7 @@ function post(op){
 }
 function accept(res){S=res;C=res.cfg;loadedAt=Date.now()}
 /* op — запись на сервер; done — что сделать после ответа. Сервер всегда возвращает свежие данные. */
-function send(op,done,errEl){
+function send(op,done,errEl,offMsg){
   if(busy)return;setBusy(true);
   post(op).then(function(res){
     setBusy(false);
@@ -197,7 +197,7 @@ function send(op,done,errEl){
     if(op)refresh();
   }).catch(function(){
     setBusy(false);
-    var m=op?'Нет связи. Запись не сохранена, нажмите ещё раз.':'Нет связи с сервером.';
+    var m=offMsg||(op?'Нет связи. Запись не сохранена, нажмите ещё раз.':'Нет связи с сервером.');
     if(errEl&&$(errEl))$(errEl).textContent=m;else toast(m,true);
   });
 }
@@ -444,7 +444,8 @@ function fStay(id){
     h+='<div class="sec"><h3>Принять оплату или услугу</h3></div><div class="grid"><div class="f"><label for="pAmt">Сумма, ₸</label><input id="pAmt" type="number" min="0" inputmode="numeric" value="'+(d>0?d:'')+'"></div><div class="f"><label for="pMet">Способ</label><select id="pMet">'+opts(C.methods)+'</select></div></div>'+
     '<div class="btns"><button class="btn sm" type="button" data-act="pay" data-id="'+id+'" data-pid="'+uid('p')+'">Принять оплату</button>'+C.services.map(function(s){return '<button class="btn sm ghost" type="button" data-act="svc" data-id="'+id+'" data-k="'+esc(s.name)+'" data-pid="'+uid('p')+'">'+esc(s.name)+' +'+s.price+'</button>'}).join('')+'</div>'+
     (C.services.length?'<p class="hint" style="margin-top:-4px">Услуга записывается как оплаченная выбранным способом.</p>':'')+
-    '<div class="btns"><button class="btn sm blue" type="button" data-act="ext" data-id="'+id+'">Продлить на '+period(T.h)+' · '+money(unitOf(st))+'</button><button class="btn sm ghost" type="button" data-act="out" data-id="'+id+'">Выселить</button></div>';
+    '<div class="btns"><button class="btn sm blue" type="button" data-act="ext-pay" data-id="'+id+'" data-pid="'+uid('p')+'">Продлить и принять '+money(unitOf(st)).replace(/ /g,'\u00a0')+'</button><button class="btn sm ghost" type="button" data-act="ext" data-id="'+id+'">Продлить в долг</button><button class="btn sm ghost" type="button" data-act="out" data-id="'+id+'">Выселить</button></div>'+
+    '<p class="hint" style="margin-top:-4px">Синяя кнопка продлевает на '+period(T.h)+' и сразу записывает оплату способом, выбранным выше. «В долг» — если гость заплатит позже.</p>';
   }else if(st.status==='in')h+='<p class="hint">Чтобы принимать оплату и выселять, примите смену на экране «Касса».</p>';
   h+='<div class="err" id="sErr"></div>';
   if(v3()&&w){
@@ -541,7 +542,20 @@ function act(a,el){
   }
   if(a==='pay'&&st){var am=num('pAmt');if(!am){$('sErr').textContent='Введите сумму.';return}return send({t:'pay',sid:id,pid:el.getAttribute('data-pid'),amount:am,method:$('pMet').value},function(){fStay(id);toast('Оплата принята.')},'sErr')}
   if(a==='svc'&&st)return send({t:'svc',sid:id,pid:el.getAttribute('data-pid'),k:el.getAttribute('data-k'),method:$('pMet').value},function(){fStay(id);toast('Услуга записана.')},'sErr');
-  if(a==='ext'&&st)return send({t:'ext',sid:id,fromQty:st.qty},function(){fStay(id);toast('Продлено. Не забудьте принять оплату.')},'sErr');
+  if(a==='ext'&&st){
+    if(el.getAttribute('data-sure')!=='1'){el.setAttribute('data-sure','1');el.textContent='Точно в долг?';$('sErr').textContent='Гость не заплатил сейчас? На нём появится долг '+money(unitOf(st))+'. Нажмите ещё раз, чтобы продлить в долг.';return}
+    return send({t:'ext',sid:id,fromQty:st.qty},function(){fStay(id);toast('Продлено в долг. Оплату примите, когда гость заплатит.')},'sErr');
+  }
+  if(a==='ext-pay'&&st){
+    var xm=$('pMet').value,xp=el.getAttribute('data-pid'),xu=unitOf(st);
+    return send({t:'ext',sid:id,fromQty:st.qty},function(){
+      var s2=stayById(id),due=s2?Math.min(xu,debtOf(s2)):0;
+      fStay(id);
+      if(due<=0){toast('Продлено. Оплата уже была внесена раньше.');return}
+      if($('pMet'))$('pMet').value=xm;
+      send({t:'pay',sid:id,pid:xp,amount:due,method:xm},function(){fStay(id);toast('Продлено и оплачено: '+money(due)+'.')},'sErr','Продление записано, а оплата нет: пропала связь. Нажмите «Принять оплату».');
+    },'sErr');
+  }
   if(a==='out'&&st){
     if(debtOf(st)>0&&el.getAttribute('data-sure')!=='1'){el.setAttribute('data-sure','1');el.textContent='Выселить с долгом?';$('sErr').textContent='У гостя долг '+money(debtOf(st))+'. Нажмите ещё раз, чтобы выселить.';return}
     return send({t:'out',sid:id},function(){closeSheet();toast('Гость выселен.')},'sErr');
