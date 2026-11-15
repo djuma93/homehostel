@@ -118,6 +118,8 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--blue)}
 .more .sec{margin-top:12px}
 .more input,.more select{background:var(--paper)}
 .row .amt a{color:var(--muted);font-size:12.5px}
+.mixl,.fixl{color:var(--blue);font-size:13.5px;font-weight:600}
+.row .fixl{font-size:12.5px}
 .bonus.got{background:var(--green-t);color:#1d5a36}
 .stamp{font-size:12px;color:var(--muted);text-align:center;margin:18px 0 0}
 @media (min-width:600px){.beds{grid-template-columns:repeat(8,1fr)}.kpis{grid-template-columns:repeat(4,1fr)}}
@@ -407,20 +409,44 @@ function fCheckin(bed){
   '<div class="f"><label for="cQty">Количество</label><input id="cQty" type="number" min="1" max="60" value="1" inputmode="numeric"></div>'+
   '<div class="f"><label for="cIn">Заезд</label><input id="cIn" type="datetime-local" value="'+toLocalInput(Date.now())+'"></div>'+
   '<div class="f"><label for="cPaid">Оплатил сейчас, ₸</label><input id="cPaid" type="number" min="0" inputmode="numeric"></div>'+
-  '<div class="f"><label for="cMet">Способ оплаты</label><select id="cMet">'+opts(C.methods)+'</select></div>'+
+  '<div class="f"><label for="cMet">Способ оплаты</label><select id="cMet">'+opts(C.methods)+'</select></div>'+mixFields('c',0)+
   '<div class="f w"><label for="cSrc">Откуда узнал</label><select id="cSrc">'+opts(C.sources)+'</select></div></div>'+
   '<div class="total"><span id="cInfo"></span><b id="cSum"></b></div><div class="err" id="cErr"></div>'+
-  '<div class="btns"><button class="btn" type="button" data-act="in-save" data-bed="'+bed+'" data-sid="'+uid('s')+'" data-pid="'+uid('p')+'">Заселить</button></div>');
+  '<div class="btns"><button class="btn" type="button" data-act="in-save" data-bed="'+bed+'" data-sid="'+uid('s')+'" data-pid="'+uid('p')+'" data-pid2="'+uid('p')+'">Заселить</button></div>');
   if($('cUnit'))$('cUnit').value=tariff($('cTar').value).price;
   calcIn(true);
 }
+/* Смешанная оплата: вторая часть другим способом. p — 'c' (заселение) или 'p' (карточка гостя). */
+function mixFields(p,due){
+  if(C.methods.length<2)return '';
+  var a=p==='c'?'cPaid2':'pAmt2',m=p==='c'?'cMet2':'pMet2';
+  return '<div class="f mixf" style="display:none"><label for="'+a+'">Вторая часть, ₸</label><input id="'+a+'" type="number" min="0" inputmode="numeric" data-due="'+(due||0)+'"></div>'+
+    '<div class="f mixf" style="display:none"><label for="'+m+'">Способ второй части</label><select id="'+m+'">'+opts(C.methods,C.methods[1])+'</select></div>'+
+    '<div class="f w"><a href="#" class="mixl" data-act="mix" data-p="'+p+'">+ Смешанная оплата: часть другим способом</a></div>';
+}
+function mixOn(p){var e=$(p==='c'?'cPaid2':'pAmt2');return !!e&&e.parentNode.style.display!=='none'}
+function mixAuto(p){
+  var e=$(p==='c'?'cPaid2':'pAmt2');if(!mixOn(p)||e.getAttribute('data-manual'))return;
+  var total=p==='c'?unitIn()*Math.max(1,parseInt($('cQty').value,10)||1):(+e.getAttribute('data-due')||0),first=num(p==='c'?'cPaid':'pAmt');
+  e.value=total>first?total-first:'';
+}
+function payGrid(d){
+  return '<div class="grid"><div class="f"><label for="pAmt">Сумма, ₸</label><input id="pAmt" type="number" min="0" inputmode="numeric" value="'+(d>0?d:'')+'"></div><div class="f"><label for="pMet">Способ</label><select id="pMet">'+opts(C.methods)+'</select></div>'+mixFields('p',d>0?d:0)+'</div>';
+}
+/* Платежи по очереди: при смешанной оплате их два. Повтор той же части сервер не задвоит. */
+function payParts(sid,parts,i,done,off){
+  var p=parts[i];
+  send({t:'pay',sid:sid,pid:p.pid,amount:p.a,method:p.m},function(){if(i+1<parts.length)payParts(sid,parts,i+1,done,off);else done()},'sErr',off?off(i):(i?'Первая часть записана ('+money(parts[0].a)+', '+parts[0].m+'), вторая нет: пропала связь. Нажмите «Принять оплату» ещё раз.':undefined));
+}
+function canFix(p){return !!S&&S.v>=5&&C.methods.length>1&&(isOwner()||(!!myShift()&&p.ts>=myShift().start))}
 function unitIn(){var T=tariff($('cTar').value);if(!$('cUnit')||$('cUnit').value==='')return T.price;return Math.max(0,parseInt($('cUnit').value,10)||0)}
 function calcIn(setPaid){
   if(!$('cTar'))return;var T=tariff($('cTar').value),q=Math.max(1,parseInt($('cQty').value,10)||1),u=unitIn(),sum=u*q,t0=new Date($('cIn').value).getTime()||Date.now();
   $('cSum').textContent=money(sum);$('cInfo').textContent='Выезд: '+dt(t0+T.h*H*q);
   if($('cNoteF'))$('cNoteF').style.display=u!==T.price?'':'none';
   if(setPaid)$('cPaid').value=sum;
-  var paid=parseInt($('cPaid').value,10)||0;$('cErr').textContent=(u!==T.price?(u<T.price?'Скидка ':'Наценка ')+money(Math.abs(T.price-u)*q)+'. ':'')+(paid<sum?'В долг останется '+money(sum-paid)+'.':'');
+  mixAuto('c');
+  var paid=(parseInt($('cPaid').value,10)||0)+(mixOn('c')?num('cPaid2'):0);$('cErr').textContent=(u!==T.price?(u<T.price?'Скидка ':'Наценка ')+money(Math.abs(T.price-u)*q)+'. ':'')+(paid<sum?'Оплачено '+money(paid)+'. В долг останется '+money(sum-paid)+'.':paid>sum?'Оплата больше суммы на '+money(paid-sum)+'. Проверьте.':'');
 }
 var findT=0,findKey='';
 function lookup(){
@@ -441,11 +467,13 @@ function fStay(id){
   var pays=S.pays.filter(function(p){return p.stay===id}).sort(function(a,b){return b.ts-a.ts});
   var h=head('Заказ №'+st.no)+'<div class="pl flat"><div><span>Гость</span><b>'+esc(st.name)+'</b></div><div><span>Телефон</span><b>'+(st.phone?'<a href="tel:'+esc(st.phone.replace(/[^+\d]/g,''))+'">'+esc(st.phone)+'</a>':'не указан')+'</b></div><div><span>Место</span><b>'+bedLabel(st.bed)+'</b></div><div><span>Тариф</span><b>'+esc(T.name)+(st.qty>1?' ×'+st.qty:'')+'</b></div><div><span>Заезд</span><b>'+dt(st.tin)+'</b></div><div><span>Выезд</span><b>'+dt(st.tout)+'</b></div><div><span>Проживание</span><b>'+money(st.sum)+'</b></div>'+(st.disc?'<div><span>'+(st.disc>0?'Скидка':'Наценка')+(st.note?': '+esc(st.note):'')+'</span><b>'+money(Math.abs(st.disc))+'</b></div>':'')+'<div><span>Стирка и сушка</span><b>'+money(st.extra||0)+'</b></div><div><span>Оплачено</span><b>'+money(paidOf(st))+'</b></div><div><span>'+(d<0?'Переплата':'Долг')+'</span><b class="'+(d>0?'neg':'pos')+'">'+money(Math.abs(d))+'</b></div><div><span>Заселил</span><b>'+esc(st.admin||'')+'</b></div></div>';
   if(st.status==='in'&&w){
-    h+='<div class="sec"><h3>Принять оплату или услугу</h3></div><div class="grid"><div class="f"><label for="pAmt">Сумма, ₸</label><input id="pAmt" type="number" min="0" inputmode="numeric" value="'+(d>0?d:'')+'"></div><div class="f"><label for="pMet">Способ</label><select id="pMet">'+opts(C.methods)+'</select></div></div>'+
-    '<div class="btns"><button class="btn sm" type="button" data-act="pay" data-id="'+id+'" data-pid="'+uid('p')+'">Принять оплату</button>'+C.services.map(function(s){return '<button class="btn sm ghost" type="button" data-act="svc" data-id="'+id+'" data-k="'+esc(s.name)+'" data-pid="'+uid('p')+'">'+esc(s.name)+' +'+s.price+'</button>'}).join('')+'</div>'+
+    h+='<div class="sec"><h3>Принять оплату или услугу</h3></div>'+payGrid(d)+
+    '<div class="btns"><button class="btn sm" type="button" data-act="pay" data-id="'+id+'" data-pid="'+uid('p')+'" data-pid2="'+uid('p')+'">Принять оплату</button>'+C.services.map(function(s){return '<button class="btn sm ghost" type="button" data-act="svc" data-id="'+id+'" data-k="'+esc(s.name)+'" data-pid="'+uid('p')+'">'+esc(s.name)+' +'+s.price+'</button>'}).join('')+'</div>'+
     (C.services.length?'<p class="hint" style="margin-top:-4px">Услуга записывается как оплаченная выбранным способом.</p>':'')+
-    '<div class="btns"><button class="btn sm blue" type="button" data-act="ext-pay" data-id="'+id+'" data-pid="'+uid('p')+'">Продлить и принять '+money(unitOf(st)).replace(/ /g,'\u00a0')+'</button><button class="btn sm ghost" type="button" data-act="ext" data-id="'+id+'">Продлить в долг</button><button class="btn sm ghost" type="button" data-act="out" data-id="'+id+'">Выселить</button></div>'+
-    '<p class="hint" style="margin-top:-4px">Синяя кнопка продлевает на '+period(T.h)+' и сразу записывает оплату способом, выбранным выше. «В долг» — если гость заплатит позже.</p>';
+    '<div class="btns"><button class="btn sm blue" type="button" data-act="ext-pay" data-id="'+id+'" data-pid="'+uid('p')+'" data-pid2="'+uid('p')+'">Продлить и принять '+money(unitOf(st)).replace(/ /g,'\u00a0')+'</button><button class="btn sm ghost" type="button" data-act="ext" data-id="'+id+'">Продлить в долг</button><button class="btn sm ghost" type="button" data-act="out" data-id="'+id+'">Выселить</button></div>'+
+    '<p class="hint" style="margin-top:-4px">Синяя кнопка продлевает на '+period(T.h)+' и сразу записывает оплату способом, выбранным выше. При смешанной оплате вторая часть идёт вторым способом, остальное первым. «В долг» — если гость заплатит позже.</p>';
+  }else if(st.status!=='in'&&w&&d>0){
+    h+='<div class="sec"><h3>Принять долг</h3></div>'+payGrid(d)+'<div class="btns"><button class="btn sm" type="button" data-act="pay" data-id="'+id+'" data-pid="'+uid('p')+'" data-pid2="'+uid('p')+'">Принять оплату</button></div><p class="hint" style="margin-top:-4px">Гость уже выехал, но долг можно закрыть: целиком или частями.</p>';
   }else if(st.status==='in')h+='<p class="hint">Чтобы принимать оплату и выселять, примите смену на экране «Касса».</p>';
   h+='<div class="err" id="sErr"></div>';
   if(v3()&&w){
@@ -456,7 +484,7 @@ function fStay(id){
     if(isOwner())h+='<div class="sec"><h3>Отменить запись</h3></div><p class="hint" style="margin-top:0">Заселение и все его платежи перестанут учитываться. В таблице строки останутся с пометкой, кто и когда отменил.</p><div class="btns"><button class="btn sm ghost" type="button" data-act="cancel" data-kind="stay" data-id="'+id+'">Отменить заселение целиком</button></div>';
     h+='<div class="err" id="xErr"></div></details>';
   }
-  h+='<div class="sec"><h3>Платежи</h3><span>'+pays.length+'</span></div>'+(pays.length?'<div class="list">'+pays.map(function(p){return '<div class="row" style="cursor:default"><div><b>'+esc(p.kind)+'</b><span>'+dt(p.ts)+' · '+esc(p.method)+(p.admin?' · '+esc(p.admin):'')+(p.note?' · '+esc(p.note):'')+'</span></div><div class="amt '+(p.amount<0?'neg':'pos')+'">'+money(p.amount)+(isOwner()&&v3()?'<span><a href="#" data-act="cancel" data-kind="pay" data-id="'+p.id+'" data-back="'+id+'">отменить</a></span>':'')+'</div></div>'}).join('')+'</div>':'<div class="empty">Платежей нет.</div>');
+  h+='<div class="sec"><h3>Платежи</h3><span>'+pays.length+'</span></div>'+(pays.length?'<div class="list">'+pays.map(function(p){return '<div class="row" style="cursor:default"><div><b>'+esc(p.kind)+'</b><span>'+dt(p.ts)+' · '+esc(p.method)+(p.admin?' · '+esc(p.admin):'')+(p.note?' · '+esc(p.note):'')+'</span>'+(canFix(p)?'<span><a href="#" class="fixl" data-act="pm" data-pid="'+p.id+'" data-id="'+id+'">исправить способ оплаты</a></span><div class="pmbox" id="pm-'+p.id+'"></div>':'')+'</div><div class="amt '+(p.amount<0?'neg':'pos')+'">'+money(p.amount)+(isOwner()&&v3()?'<span><a href="#" data-act="cancel" data-kind="pay" data-id="'+p.id+'" data-back="'+id+'">отменить</a></span>':'')+'</div></div>'}).join('')+'</div>':'<div class="empty">Платежей нет.</div>');
   openSheet(h);
 }
 function fOpen(){
@@ -538,22 +566,57 @@ function act(a,el){
   if(a==='in-save'){
     var name=$('cName').value.trim();if(!name){$('cErr').textContent='Введите имя гостя.';return}
     if(v3()&&unitIn()!==tariff($('cTar').value).price&&!$('cNote').value.trim()){$('cErr').textContent='Цена отличается от тарифа. Напишите причину.';return}
-    return send({t:'checkin',sid:el.getAttribute('data-sid'),pid:el.getAttribute('data-pid'),bed:el.getAttribute('data-bed'),name:name,phone:$('cPhone').value.trim(),tariff:$('cTar').value,qty:Math.max(1,parseInt($('cQty').value,10)||1),tin:new Date($('cIn').value).getTime()||Date.now(),paid:num('cPaid'),method:$('cMet').value,src:$('cSrc').value,unit:v3()?unitIn():undefined,pnote:$('cNote')?$('cNote').value.trim():''},function(){closeSheet();toast('Гость заселён.')},'cErr');
+    var c1=num('cPaid'),cm1=$('cMet').value,c2=mixOn('c')?num('cPaid2'):0,cm2=c2?$('cMet2').value:'',csid=el.getAttribute('data-sid'),cpid2=el.getAttribute('data-pid2');
+    if(c1&&c2&&cm1===cm2){$('cErr').textContent='Для смешанной оплаты выберите два разных способа.';return}
+    if(c2&&!c1){c1=c2;cm1=cm2;c2=0}
+    return send({t:'checkin',sid:csid,pid:el.getAttribute('data-pid'),bed:el.getAttribute('data-bed'),name:name,phone:$('cPhone').value.trim(),tariff:$('cTar').value,qty:Math.max(1,parseInt($('cQty').value,10)||1),tin:new Date($('cIn').value).getTime()||Date.now(),paid:c1,method:cm1,src:$('cSrc').value,unit:v3()?unitIn():undefined,pnote:$('cNote')?$('cNote').value.trim():''},function(){
+      closeSheet();
+      if(!c2){toast('Гость заселён.');return}
+      send({t:'pay',sid:csid,pid:cpid2,amount:c2,method:cm2},function(){toast('Гость заселён. Оплата: '+money(c1)+' '+cm1+' + '+money(c2)+' '+cm2+'.')},null,'Гость заселён, но вторая часть оплаты ('+money(c2)+', '+cm2+') не записалась: пропала связь. Откройте карточку гостя и примите её.');
+    },'cErr');
   }
-  if(a==='pay'&&st){var am=num('pAmt');if(!am){$('sErr').textContent='Введите сумму.';return}return send({t:'pay',sid:id,pid:el.getAttribute('data-pid'),amount:am,method:$('pMet').value},function(){fStay(id);toast('Оплата принята.')},'sErr')}
+  if(a==='mix'){
+    var mp=el.getAttribute('data-p'),on=!mixOn(mp),e2=$(mp==='c'?'cPaid2':'pAmt2'),s1=$(mp==='c'?'cMet':'pMet'),s2=$(mp==='c'?'cMet2':'pMet2');
+    document.querySelectorAll('.sheet .mixf').forEach(function(x){x.style.display=on?'':'none'});
+    el.textContent=on?'− Убрать вторую часть':'+ Смешанная оплата: часть другим способом';
+    e2.value='';e2.removeAttribute('data-manual');
+    if(on){if(s2.value===s1.value)s2.value=C.methods[s1.value===C.methods[0]?1:0];mixAuto(mp)}
+    if(mp==='c')calcIn(false);
+    return;
+  }
+  if(a==='pm'){
+    var pmId=el.getAttribute('data-pid'),bx=$('pm-'+pmId),cur=null,was=bx&&bx.innerHTML;
+    S.pays.forEach(function(p){if(p.id===pmId)cur=p});if(!bx||!cur)return;
+    document.querySelectorAll('.pmbox').forEach(function(x){x.innerHTML=''});
+    if(!was)bx.innerHTML='<div style="display:flex;gap:8px;margin-top:8px;align-items:center"><select id="pmSel" aria-label="Правильный способ оплаты" style="height:40px;padding:6px 10px">'+opts(C.methods.filter(function(m){return m!==cur.method}))+'</select><button class="btn sm" type="button" style="flex:none" data-act="pm-save" data-pid="'+pmId+'" data-id="'+id+'">Сохранить</button></div>';
+    return;
+  }
+  if(a==='pm-save')return send({t:'paymethod',pid:el.getAttribute('data-pid'),method:$('pmSel').value},function(){fStay(id);toast('Способ оплаты исправлен.')});
+  if(a==='pay'&&st){
+    var am=num('pAmt'),am2=mixOn('p')?num('pAmt2'):0,pm1=$('pMet').value,pm2=am2?$('pMet2').value:'',parts=[];
+    if(!am&&!am2){$('sErr').textContent='Введите сумму.';return}
+    if(am&&am2&&pm1===pm2){$('sErr').textContent='Для смешанной оплаты выберите два разных способа.';return}
+    if(am)parts.push({a:am,m:pm1,pid:el.getAttribute('data-pid')});
+    if(am2)parts.push({a:am2,m:pm2,pid:el.getAttribute('data-pid2')});
+    return payParts(id,parts,0,function(){fStay(id);toast(parts.length>1?'Оплата принята: '+money(am)+' '+pm1+' + '+money(am2)+' '+pm2+'.':'Оплата принята.')});
+  }
   if(a==='svc'&&st)return send({t:'svc',sid:id,pid:el.getAttribute('data-pid'),k:el.getAttribute('data-k'),method:$('pMet').value},function(){fStay(id);toast('Услуга записана.')},'sErr');
   if(a==='ext'&&st){
     if(el.getAttribute('data-sure')!=='1'){el.setAttribute('data-sure','1');el.textContent='Точно в долг?';$('sErr').textContent='Гость не заплатил сейчас? На нём появится долг '+money(unitOf(st))+'. Нажмите ещё раз, чтобы продлить в долг.';return}
     return send({t:'ext',sid:id,fromQty:st.qty},function(){fStay(id);toast('Продлено в долг. Оплату примите, когда гость заплатит.')},'sErr');
   }
   if(a==='ext-pay'&&st){
-    var xm=$('pMet').value,xp=el.getAttribute('data-pid'),xu=unitOf(st);
+    var xm=$('pMet').value,xp=el.getAttribute('data-pid'),xp2=el.getAttribute('data-pid2'),xu=unitOf(st),x2=mixOn('p')?num('pAmt2'):0,xm2=x2?$('pMet2').value:'';
+    if(x2&&xm===xm2){$('sErr').textContent='Для смешанной оплаты выберите два разных способа.';return}
     return send({t:'ext',sid:id,fromQty:st.qty},function(){
       var s2=stayById(id),due=s2?Math.min(xu,debtOf(s2)):0;
       fStay(id);
       if(due<=0){toast('Продлено. Оплата уже была внесена раньше.');return}
       if($('pMet'))$('pMet').value=xm;
-      send({t:'pay',sid:id,pid:xp,amount:due,method:xm},function(){fStay(id);toast('Продлено и оплачено: '+money(due)+'.')},'sErr','Продление записано, а оплата нет: пропала связь. Нажмите «Принять оплату».');
+      var xb=Math.min(x2,due),xparts=[];
+      if(due-xb>0)xparts.push({a:due-xb,m:xm,pid:xp});
+      if(xb>0)xparts.push({a:xb,m:xm2,pid:xp2});
+      payParts(id,xparts,0,function(){fStay(id);toast('Продлено и оплачено: '+(xparts.length>1?money(due-xb)+' '+xm+' + '+money(xb)+' '+xm2:money(due))+'.')},function(i){return i?'Продление записано, а оплата записана не полностью: пропала связь. Проверьте долг в карточке и примите остаток нужным способом.':'Продление записано, а оплата нет: пропала связь. Нажмите «Принять оплату».'});
     },'sErr');
   }
   if(a==='out'&&st){
@@ -570,7 +633,7 @@ document.addEventListener('click',function(e){
   if(e.target.id==='sheet'&&!busy)closeSheet();
 });
 document.addEventListener('input',function(e){
-  var i=e.target.id;if(i==='cTar'&&$('cUnit'))$('cUnit').value=tariff($('cTar').value).price;if(i==='cPhone')lookup();if((i==='rAmt'||i==='rNote')&&$('xErr'))$('xErr').textContent='';if(i==='oCnt')calcOpen();if(i==='cTar'||i==='cQty'||i==='cIn'||i==='cUnit')calcIn(true);else if(i==='cPaid')calcIn(false);else if(i==='hCnt')calcShift();
+  var i=e.target.id;if(i==='cTar'&&$('cUnit'))$('cUnit').value=tariff($('cTar').value).price;if(i==='cPhone')lookup();if((i==='rAmt'||i==='rNote')&&$('xErr'))$('xErr').textContent='';if(i==='oCnt')calcOpen();if(i==='cPaid2'||i==='pAmt2'){if(e.target.value==='')e.target.removeAttribute('data-manual');else e.target.setAttribute('data-manual','1')}if(i==='pAmt')mixAuto('p');if(i==='cTar'||i==='cQty'||i==='cIn'||i==='cUnit')calcIn(true);else if(i==='cPaid'||i==='cPaid2')calcIn(false);else if(i==='hCnt')calcShift();
 });
 document.addEventListener('keydown',function(e){if(e.key==='Enter'&&e.target.id==='codeIn')login(e.target.value);if(e.key==='Enter'&&e.target.id==='apiIn'){var b=document.querySelector('[data-act="api-save"]');if(b)b.click()}});
 document.addEventListener('visibilitychange',function(){if(!document.hidden)refresh()});
