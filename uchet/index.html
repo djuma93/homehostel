@@ -304,7 +304,7 @@ function vBeds(){
       occ++;rb++;var d=debtOf(st),cls='bed busy';
       if(st.tout<now)cls+=' late';else if(st.tout-now<6*H)cls+=' soon';
       if(d>0)cls+=' debt';
-      cells+='<button class="'+cls+'" type="button" data-act="stay" data-id="'+st.id+'"><em>'+i+'</em><strong>'+esc(st.name)+'</strong><small>'+(st.tout<now?'время вышло':'до '+dt(st.tout))+'</small></button>';
+      cells+='<button class="'+cls+'" type="button" data-act="stay" data-id="'+st.id+'"><em>'+i+'</em><strong>'+esc(st.name)+'</strong><small>'+(st.tout<now?(-d>=unitOf(st)?'оплачено · продлите':'время вышло'):'до '+dt(st.tout))+'</small></button>';
     }
     rooms+='<div class="room"><div class="room-h"><h3>Комната '+R.n+'</h3><span>'+esc(R.note)+(R.note?' · ':'')+'занято '+rb+' из '+R.beds+'</span></div><div class="beds">'+cells+'</div></div>';
   });
@@ -438,6 +438,10 @@ function payParts(sid,parts,i,done,off){
   var p=parts[i];
   send({t:'pay',sid:sid,pid:p.pid,amount:p.a,method:p.m},function(){if(i+1<parts.length)payParts(sid,parts,i+1,done,off);else done()},'sErr',off?off(i):(i?'Первая часть записана ('+money(parts[0].a)+', '+parts[0].m+'), вторая нет: пропала связь. Нажмите «Принять оплату» ещё раз.':undefined));
 }
+function extMany(id,n,done,k){
+  k=k||0;var s=stayById(id);if(!s||k>=n)return done(k);
+  send({t:'ext',sid:id,fromQty:s.qty},function(){fStay(id);extMany(id,n,done,k+1)},'sErr','Оплата записана, а срок не продлён: пропала связь. Нажмите синюю кнопку «Продлить · уже оплачено».');
+}
 function canFix(p){return !!S&&S.v>=5&&C.methods.length>1&&(isOwner()||(!!myShift()&&p.ts>=myShift().start))}
 function unitIn(){var T=tariff($('cTar').value);if(!$('cUnit')||$('cUnit').value==='')return T.price;return Math.max(0,parseInt($('cUnit').value,10)||0)}
 function calcIn(setPaid){
@@ -469,8 +473,9 @@ function fStay(id){
   if(st.status==='in'&&w){
     h+='<div class="sec"><h3>Принять оплату или услугу</h3></div>'+payGrid(d)+
     '<div class="btns"><button class="btn sm" type="button" data-act="pay" data-id="'+id+'" data-pid="'+uid('p')+'" data-pid2="'+uid('p')+'">Принять оплату</button>'+C.services.map(function(s){return '<button class="btn sm ghost" type="button" data-act="svc" data-id="'+id+'" data-k="'+esc(s.name)+'" data-pid="'+uid('p')+'">'+esc(s.name)+' +'+s.price+'</button>'}).join('')+'</div>'+
-    (C.services.length?'<p class="hint" style="margin-top:-4px">Услуга записывается как оплаченная выбранным способом.</p>':'')+
-    '<div class="btns"><button class="btn sm blue" type="button" data-act="ext-pay" data-id="'+id+'" data-pid="'+uid('p')+'" data-pid2="'+uid('p')+'">Продлить и принять '+money(unitOf(st)).replace(/ /g,'\u00a0')+'</button><button class="btn sm ghost" type="button" data-act="ext" data-id="'+id+'">Продлить в долг</button><button class="btn sm ghost" type="button" data-act="out" data-id="'+id+'">Выселить</button></div>'+
+    '<p class="hint" style="margin-top:-4px">Если гость платит за следующий период ('+money(unitOf(st))+'), срок продлится сам.'+(C.services.length?' Услуга записывается как оплаченная выбранным способом.':'')+'</p>'+
+    (-d>=unitOf(st)?'<p class="hint" style="margin-top:-4px;color:var(--tomato)"><b>У гостя оплачено '+money(-d)+', но срок не продлён.</b> Нажмите синюю кнопку: срок продлится, новая оплата не запишется.</p>':'')+
+    '<div class="btns"><button class="btn sm blue" type="button" data-act="ext-pay" data-id="'+id+'" data-pid="'+uid('p')+'" data-pid2="'+uid('p')+'">'+(-d>=unitOf(st)?'Продлить на '+period(T.h)+' · уже оплачено':'Продлить и принять '+money(unitOf(st)).replace(/ /g,'\u00a0'))+'</button><button class="btn sm ghost" type="button" data-act="ext" data-id="'+id+'">Продлить в долг</button><button class="btn sm ghost" type="button" data-act="out" data-id="'+id+'">Выселить</button></div>'+
     '<p class="hint" style="margin-top:-4px">Синяя кнопка продлевает на '+period(T.h)+' и сразу записывает оплату способом, выбранным выше. При смешанной оплате вторая часть идёт вторым способом, остальное первым. «В долг» — если гость заплатит позже.</p>';
   }else if(st.status!=='in'&&w&&d>0){
     h+='<div class="sec"><h3>Принять долг</h3></div>'+payGrid(d)+'<div class="btns"><button class="btn sm" type="button" data-act="pay" data-id="'+id+'" data-pid="'+uid('p')+'" data-pid2="'+uid('p')+'">Принять оплату</button></div><p class="hint" style="margin-top:-4px">Гость уже выехал, но долг можно закрыть: целиком или частями.</p>';
@@ -598,7 +603,14 @@ function act(a,el){
     if(am&&am2&&pm1===pm2){$('sErr').textContent='Для смешанной оплаты выберите два разных способа.';return}
     if(am)parts.push({a:am,m:pm1,pid:el.getAttribute('data-pid')});
     if(am2)parts.push({a:am2,m:pm2,pid:el.getAttribute('data-pid2')});
-    return payParts(id,parts,0,function(){fStay(id);toast(parts.length>1?'Оплата принята: '+money(am)+' '+pm1+' + '+money(am2)+' '+pm2+'.':'Оплата принята.')});
+    var live=st.status==='in',pu=live?unitOf(st):0,pn=pu>0?Math.min(31,Math.floor((am+am2-debtOf(st))/pu)):0,pT=tariff(st.tariff);
+    if(pn>1&&el.getAttribute('data-sure')!=='1'){el.setAttribute('data-sure','1');el.textContent='Да, принять и продлить';$('sErr').textContent='Этой суммы хватает на '+pn+' × '+pT.name+'. Нажмите ещё раз: оплата запишется, срок продлится на '+pn+' × '+period(pT.h)+'. Если сумма ошибочная, исправьте её.';return}
+    var okMsg=parts.length>1?'Оплата принята: '+money(am)+' '+pm1+' + '+money(am2)+' '+pm2+'.':'Оплата принята.';
+    return payParts(id,parts,0,function(){
+      fStay(id);
+      if(pn<1){var s3=stayById(id),over=s3?-debtOf(s3):0;toast(live&&over>0?'Оплата принята. Переплата '+money(over)+': на продление ('+money(pu)+') не хватает, срок не сдвинулся.':okMsg,live&&over>0);return}
+      extMany(id,pn,function(k){var s4=stayById(id);toast(okMsg+' Срок продлён'+(s4?' до '+dt(s4.tout):'')+'.')});
+    });
   }
   if(a==='svc'&&st)return send({t:'svc',sid:id,pid:el.getAttribute('data-pid'),k:el.getAttribute('data-k'),method:$('pMet').value},function(){fStay(id);toast('Услуга записана.')},'sErr');
   if(a==='ext'&&st){
