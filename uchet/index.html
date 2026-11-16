@@ -443,6 +443,7 @@ function extMany(id,n,done,k){
   k=k||0;var s=stayById(id);if(!s||k>=n)return done(k);
   send({t:'ext',sid:id,fromQty:s.qty},function(){fStay(id);extMany(id,n,done,k+1)},'sErr','Оплата записана, а срок не продлён: пропала связь. Нажмите синюю кнопку «Продлить · уже оплачено».');
 }
+function canCancel(p){return !!S&&(isOwner()?v3():S.v>=7&&!!myShift()&&p.ts>=S.shift.start&&p.admin===S.user.name)}
 function canFix(p){return !!S&&S.v>=5&&C.methods.length>1&&(isOwner()||(!!myShift()&&p.ts>=myShift().start))}
 function unitIn(){var T=tariff($('cTar').value);if(!$('cUnit')||$('cUnit').value==='')return T.price;return Math.max(0,parseInt($('cUnit').value,10)||0)}
 function calcIn(setPaid){
@@ -484,13 +485,18 @@ function fStay(id){
   h+='<div class="err" id="sErr"></div>';
   if(v3()&&w){
     var fb=freeBeds();
-    h+='<details class="more"><summary>Переселить, вернуть деньги'+(isOwner()?', отменить':'')+'</summary>';
+    h+='<details class="more"><summary>'+(st.status==='in'&&S.v>=7?'Тариф, срок, переселить, вернуть деньги':'Переселить, вернуть деньги')+(isOwner()?', отменить':'')+'</summary>';
+    if(st.status==='in'&&S.v>=7){
+      var oth=C.tariffs.filter(function(x){return x.k!==st.tariff})[0];
+      h+='<div class="sec"><h3>Сменить тариф</h3></div><div class="grid"><div class="f"><label for="tTar">Новый тариф</label><select id="tTar">'+C.tariffs.map(function(x){return '<option value="'+esc(x.k)+'"'+(oth&&x.k===oth.k?' selected':'')+'>'+esc(x.name)+' · '+money(x.price)+'</option>'}).join('')+'</select></div><div class="f"><label for="tQty">Сколько периодов</label><input id="tQty" type="number" min="1" max="60" inputmode="numeric" value="1"></div></div><div class="btns"><button class="btn sm blue" type="button" data-act="tariff" data-id="'+id+'">Сменить тариф</button></div><p class="hint" style="margin-top:-4px">Весь срок считается заново от заезда ('+dt(st.tin)+') по новому тарифу. Оплаченное сохраняется: разница станет долгом или переплатой.</p>';
+      h+='<div class="sec"><h3>Исправить время выезда</h3></div><div class="grid"><div class="f w"><label for="oT">Выезд</label><input id="oT" type="datetime-local" value="'+toLocalInput(st.tout)+'"></div></div><div class="btns"><button class="btn sm blue" type="button" data-act="tout" data-id="'+id+'">Сохранить время выезда</button>'+(st.qty>1?'<button class="btn sm ghost" type="button" data-act="unext" data-id="'+id+'">Убрать последнее продление</button>':'')+'</div><p class="hint" style="margin-top:-4px">Время выезда меняет только срок, сумма остаётся прежней.'+(st.qty>1?' «Убрать продление» возвращает срок и сумму на один период назад.':'')+' Владелец получит сообщение.</p>';
+    }
     if(st.status==='in')h+='<div class="sec"><h3>Переселить на свободное место</h3></div>'+(fb.length?'<div class="grid"><div class="f"><label for="mBed">Новое место</label><select id="mBed">'+fb.map(function(b){return '<option value="'+b+'">'+bedLabel(b)+'</option>'}).join('')+'</select></div><div class="f" style="justify-content:flex-end"><button class="btn sm blue" type="button" data-act="move" data-id="'+id+'">Переселить</button></div></div><p class="hint">Заказ, оплата и срок остаются прежними, меняется только место.</p>':'<div class="empty">Свободных мест нет.</div>');
     h+='<div class="sec"><h3>Вернуть деньги гостю</h3></div><div class="grid"><div class="f"><label for="rAmt">Сумма возврата, ₸</label><input id="rAmt" type="number" min="0" inputmode="numeric"></div><div class="f"><label for="rMet">Как вернули</label><select id="rMet">'+opts(C.methods)+'</select></div><div class="f w"><label for="rNote">Причина (видит владелец)</label><input id="rNote" autocomplete="off" placeholder="например: уехал на сутки раньше"></div></div><div class="btns"><button class="btn sm ghost" type="button" data-act="refund" data-id="'+id+'" data-pid="'+uid('p')+'">Записать возврат</button></div><p class="hint" style="margin-top:-4px">Возврат уменьшает сумму проживания и выручку. Наличный возврат уменьшает кассу.</p>';
     if(isOwner())h+='<div class="sec"><h3>Отменить запись</h3></div><p class="hint" style="margin-top:0">Заселение и все его платежи перестанут учитываться. В таблице строки останутся с пометкой, кто и когда отменил.</p><div class="btns"><button class="btn sm ghost" type="button" data-act="cancel" data-kind="stay" data-id="'+id+'">Отменить заселение целиком</button></div>';
     h+='<div class="err" id="xErr"></div></details>';
   }
-  h+='<div class="sec"><h3>Платежи</h3><span>'+pays.length+'</span></div>'+(pays.length?'<div class="list">'+pays.map(function(p){return '<div class="row" style="cursor:default"><div><b>'+esc(p.kind)+'</b><span>'+dt(p.ts)+' · '+esc(p.method)+(p.admin?' · '+esc(p.admin):'')+(p.note?' · '+esc(p.note):'')+'</span>'+(canFix(p)?'<span><a href="#" class="fixl" data-act="pm" data-pid="'+p.id+'" data-id="'+id+'">исправить способ оплаты</a></span><div class="pmbox" id="pm-'+p.id+'"></div>':'')+'</div><div class="amt '+(p.amount<0?'neg':'pos')+'">'+money(p.amount)+(isOwner()&&v3()?'<span><a href="#" data-act="cancel" data-kind="pay" data-id="'+p.id+'" data-back="'+id+'">отменить</a></span>':'')+'</div></div>'}).join('')+'</div>':'<div class="empty">Платежей нет.</div>');
+  h+='<div class="sec"><h3>Платежи</h3><span>'+pays.length+'</span></div>'+(pays.length?'<div class="list">'+pays.map(function(p){return '<div class="row" style="cursor:default"><div><b>'+esc(p.kind)+'</b><span>'+dt(p.ts)+' · '+esc(p.method)+(p.admin?' · '+esc(p.admin):'')+(p.note?' · '+esc(p.note):'')+'</span>'+(canFix(p)?'<span><a href="#" class="fixl" data-act="pm" data-pid="'+p.id+'" data-id="'+id+'">исправить способ оплаты</a></span><div class="pmbox" id="pm-'+p.id+'"></div>':'')+'</div><div class="amt '+(p.amount<0?'neg':'pos')+'">'+money(p.amount)+(canCancel(p)?'<span><a href="#" data-act="cancel" data-kind="pay" data-id="'+p.id+'" data-back="'+id+'">отменить</a></span>':'')+'</div></div>'}).join('')+'</div>':'<div class="empty">Платежей нет.</div>');
   openSheet(h);
 }
 function fOpen(){
@@ -558,6 +564,25 @@ function act(a,el){
   if(a==='bonus-no')return send({t:'bonus',hid:el.getAttribute('data-hid'),give:false},function(){closeSheet();toast('Записано: без премии.')},'bErr');
   if(a==='cfg')return fCfg();
   if(a==='cfg-save')return send({t:'cfg',rate:num('gRate'),bonusFrom:num('gFrom'),bonus:num('gBon'),phone:$('gPh').value.trim()},function(){closeSheet();toast('Сохранено.')},'gErr2');
+  if(a==='tariff'&&st){
+    var nk=$('tTar').value,nq=Math.min(60,Math.max(1,parseInt($('tQty').value,10)||1)),nT=tariff(nk),sig=nk+'|'+nq;
+    if(nk===st.tariff&&nq===st.qty){$('xErr').textContent='У гостя уже этот тариф и столько же периодов.';return}
+    if(el.getAttribute('data-sure')!==sig){
+      var nd=nT.price*nq+(st.extra||0)-paidOf(st);
+      el.setAttribute('data-sure',sig);el.textContent='Да, сменить тариф';
+      $('xErr').textContent='Станет: '+nT.name+(nq>1?' ×'+nq:'')+', выезд '+dt(st.tin+nT.h*H*nq)+', проживание '+money(nT.price*nq)+', '+(nd>0?'долг '+money(nd):nd<0?'переплата '+money(-nd):'долга нет')+'. Нажмите ещё раз.';return}
+    return send({t:'tariff',sid:id,tariff:nk,qty:nq},function(){fStay(id);var ln=lateNote(id);toast('Тариф изменён.'+ln,!!ln)},'xErr');
+  }
+  if(a==='tout'&&st){
+    var nt=new Date($('oT').value).getTime();
+    if(!nt||nt<=st.tin){$('xErr').textContent='Проверьте время выезда: оно должно быть позже заезда.';return}
+    if(Math.abs(nt-st.tout)<60000){$('xErr').textContent='Время выезда не изменилось.';return}
+    return send({t:'tout',sid:id,tout:nt},function(){fStay(id);toast('Время выезда исправлено.')},'xErr');
+  }
+  if(a==='unext'&&st){
+    if(el.getAttribute('data-sure')!=='1'){el.setAttribute('data-sure','1');el.textContent='Точно убрать?';$('xErr').textContent='Срок и сумма проживания уменьшатся на один период ('+money(unitOf(st))+'). Платежи не меняются. Нажмите ещё раз.';return}
+    return send({t:'unext',sid:id,fromQty:st.qty},function(){fStay(id);toast('Последнее продление убрано.')},'xErr');
+  }
   if(a==='move'&&st)return send({t:'move',sid:id,bed:$('mBed').value},function(){fStay(id);toast('Гость переселён.')},'xErr');
   if(a==='refund'&&st){var rm=num('rAmt'),rn=$('rNote').value.trim();if(!rm){$('xErr').textContent='Введите сумму возврата.';return}if(!rn){$('xErr').textContent='Напишите причину возврата.';return}return send({t:'refund',sid:id,pid:el.getAttribute('data-pid'),amount:rm,method:$('rMet').value,note:rn},function(){fStay(id);toast('Возврат записан.')},'xErr')}
   if(a==='cancel'){var ck=el.getAttribute('data-kind'),bk=el.getAttribute('data-back');if(el.getAttribute('data-sure')!=='1'){el.setAttribute('data-sure','1');el.textContent=ck==='stay'?'Точно отменить заселение?':'точно отменить?';return}return send({t:'cancel',kind:ck,id:id},function(){if(bk&&stayById(bk))fStay(bk);else closeSheet();toast('Запись отменена.')})}
