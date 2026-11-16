@@ -438,6 +438,7 @@ function payParts(sid,parts,i,done,off){
   var p=parts[i];
   send({t:'pay',sid:sid,pid:p.pid,amount:p.a,method:p.m},function(){if(i+1<parts.length)payParts(sid,parts,i+1,done,off);else done()},'sErr',off?off(i):(i?'Первая часть записана ('+money(parts[0].a)+', '+parts[0].m+'), вторая нет: пропала связь. Нажмите «Принять оплату» ещё раз.':undefined));
 }
+function lateNote(id){var s=stayById(id);return s&&s.status==='in'&&s.tout<Date.now()?' Срок теперь до '+dt(s.tout)+', и это время уже прошло: гость живёт дольше оплаченного. Продлите ещё раз или выселите.':''}
 function extMany(id,n,done,k){
   k=k||0;var s=stayById(id);if(!s||k>=n)return done(k);
   send({t:'ext',sid:id,fromQty:s.qty},function(){fStay(id);extMany(id,n,done,k+1)},'sErr','Оплата записана, а срок не продлён: пропала связь. Нажмите синюю кнопку «Продлить · уже оплачено».');
@@ -609,13 +610,13 @@ function act(a,el){
     return payParts(id,parts,0,function(){
       fStay(id);
       if(pn<1){var s3=stayById(id),over=s3?-debtOf(s3):0;toast(live&&over>0?'Оплата принята. Переплата '+money(over)+': на продление ('+money(pu)+') не хватает, срок не сдвинулся.':okMsg,live&&over>0);return}
-      extMany(id,pn,function(k){var s4=stayById(id);toast(okMsg+' Срок продлён'+(s4?' до '+dt(s4.tout):'')+'.')});
+      extMany(id,pn,function(k){var s4=stayById(id),ln=lateNote(id);toast(okMsg+(ln||' Срок продлён'+(s4?' до '+dt(s4.tout):'')+'.'),!!ln)});
     });
   }
   if(a==='svc'&&st)return send({t:'svc',sid:id,pid:el.getAttribute('data-pid'),k:el.getAttribute('data-k'),method:$('pMet').value},function(){fStay(id);toast('Услуга записана.')},'sErr');
   if(a==='ext'&&st){
     if(el.getAttribute('data-sure')!=='1'){el.setAttribute('data-sure','1');el.textContent='Точно в долг?';$('sErr').textContent='Гость не заплатил сейчас? На нём появится долг '+money(unitOf(st))+'. Нажмите ещё раз, чтобы продлить в долг.';return}
-    return send({t:'ext',sid:id,fromQty:st.qty},function(){fStay(id);toast('Продлено в долг. Оплату примите, когда гость заплатит.')},'sErr');
+    return send({t:'ext',sid:id,fromQty:st.qty},function(){fStay(id);var ln=lateNote(id);toast('Продлено в долг. Оплату примите, когда гость заплатит.'+ln,!!ln)},'sErr');
   }
   if(a==='ext-pay'&&st){
     var xm=$('pMet').value,xp=el.getAttribute('data-pid'),xp2=el.getAttribute('data-pid2'),xu=unitOf(st),x2=mixOn('p')?num('pAmt2'):0,xm2=x2?$('pMet2').value:'';
@@ -623,12 +624,12 @@ function act(a,el){
     return send({t:'ext',sid:id,fromQty:st.qty},function(){
       var s2=stayById(id),due=s2?Math.min(xu,debtOf(s2)):0;
       fStay(id);
-      if(due<=0){toast('Продлено. Оплата уже была внесена раньше.');return}
+      if(due<=0){var ln0=lateNote(id);toast('Продлено. Оплата уже была внесена раньше.'+ln0,!!ln0);return}
       if($('pMet'))$('pMet').value=xm;
       var xb=Math.min(x2,due),xparts=[];
       if(due-xb>0)xparts.push({a:due-xb,m:xm,pid:xp});
       if(xb>0)xparts.push({a:xb,m:xm2,pid:xp2});
-      payParts(id,xparts,0,function(){fStay(id);toast('Продлено и оплачено: '+(xparts.length>1?money(due-xb)+' '+xm+' + '+money(xb)+' '+xm2:money(due))+'.')},function(i){return i?'Продление записано, а оплата записана не полностью: пропала связь. Проверьте долг в карточке и примите остаток нужным способом.':'Продление записано, а оплата нет: пропала связь. Нажмите «Принять оплату».'});
+      payParts(id,xparts,0,function(){fStay(id);var ln=lateNote(id);toast('Продлено и оплачено: '+(xparts.length>1?money(due-xb)+' '+xm+' + '+money(xb)+' '+xm2:money(due))+'.'+ln,!!ln)},function(i){return i?'Продление записано, а оплата записана не полностью: пропала связь. Проверьте долг в карточке и примите остаток нужным способом.':'Продление записано, а оплата нет: пропала связь. Нажмите «Принять оплату».'});
     },'sErr');
   }
   if(a==='out'&&st){
